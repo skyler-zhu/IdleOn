@@ -17,6 +17,11 @@ namespace IdleOnLike.Combat
         private GameObject attackFlash;
         private GameObject treeObject;
 
+        public bool IsPlayerNearTree(Vector3 playerPosition)
+        {
+            return treeObject != null && Vector3.Distance(playerPosition, treeObject.transform.position) <= 1.35f;
+        }
+
         public static CombatView Create(GameRuntime runtime, CombatService combatService)
         {
             var viewObject = new GameObject("Combat View");

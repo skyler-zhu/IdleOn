@@ -20,6 +20,7 @@ namespace IdleOnLike.Combat
         private const float EnemyWanderRadius = 1.05f;
         private const float EnemyVerticalWanderRadius = 0.08f;
         private static readonly Vector3 PlayerPositionValue = new Vector3(-3.25f, -1.05f, 0f);
+        private static readonly Vector3 TreeGatherPosition = new Vector3(2.55f, -1.05f, 0f);
 
         private readonly GameState state;
         private readonly InventoryService inventoryService;
@@ -51,6 +52,7 @@ namespace IdleOnLike.Combat
         public int MaxPlayerHp => 50 + state.SaveData.level * 10;
         public int ExperienceRequired => ProgressionService.GetExperienceRequired(state.SaveData.level);
         public bool IsResting => restRemainingSeconds > 0f;
+        public bool IsPlayerNearTree => Vector3.Distance(playerPosition, TreeGatherPosition) <= 0.85f;
 
         public event Action Changed;
         public event Action<string> LogAdded;
@@ -151,7 +153,7 @@ namespace IdleOnLike.Combat
             }
             else
             {
-                playerPosition = Vector3.MoveTowards(playerPosition, PlayerPositionValue, PlayerMoveSpeed * deltaTime);
+                playerPosition = Vector3.MoveTowards(playerPosition, TreeGatherPosition, PlayerMoveSpeed * deltaTime);
             }
 
             foreach (var enemy in enemies)
@@ -242,7 +244,7 @@ namespace IdleOnLike.Combat
         private Vector3 GetSpawnPosition(int index)
         {
             var row = index % 3;
-            return new Vector3(-1.25f + row * 0.95f, -1.15f + row * 0.06f, 0f);
+            return new Vector3(0.35f + row * 1.15f, -1.15f + row * 0.06f, 0f);
         }
 
         private void SelectCurrentTarget()

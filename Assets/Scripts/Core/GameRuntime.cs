@@ -9,6 +9,7 @@ using IdleOnLike.Quests;
 using IdleOnLike.Save;
 using IdleOnLike.Skills;
 using IdleOnLike.UI;
+using IdleOnLike.World;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -161,6 +162,7 @@ namespace IdleOnLike.Core
                 return;
             }
 
+            VillageView.Create(this);
             VillageHudScreen.Build(this, TravelToForest, DeleteSaveAndReturnToCharacterSelect);
             ShowPendingOfflineGainsIfAny();
         }

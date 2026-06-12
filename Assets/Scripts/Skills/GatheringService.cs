@@ -30,17 +30,27 @@ namespace IdleOnLike.Skills
 
         public bool IsGathering => saveData.currentActivity == ZoneActivity.Chopping.ToString();
 
-        public void StartGathering(string nodeId)
+        public bool StartGathering(string nodeId, bool isNearNode = true)
         {
             if (nodeId != TreeNodeId)
             {
-                return;
+                return false;
+            }
+
+            if (!isNearNode)
+            {
+                gatherTimer = 0f;
+                saveData.currentActivity = ZoneActivity.Chopping.ToString();
+                LogAdded?.Invoke("Move near tree.");
+                Changed?.Invoke();
+                return true;
             }
 
             gatherTimer = 0f;
             saveData.currentActivity = ZoneActivity.Chopping.ToString();
             LogAdded?.Invoke("Started chopping.");
             Changed?.Invoke();
+            return true;
         }
 
         public void StopGathering()
@@ -51,10 +61,16 @@ namespace IdleOnLike.Skills
             Changed?.Invoke();
         }
 
-        public void Tick(float deltaTime)
+        public void Tick(float deltaTime, bool canGather = true)
         {
             if (!IsGathering)
             {
+                return;
+            }
+
+            if (!canGather)
+            {
+                gatherTimer = 0f;
                 return;
             }
 

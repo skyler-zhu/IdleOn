@@ -11,7 +11,7 @@ namespace IdleOnLike.UI
     {
         private const int MaxLogLines = 4;
 
-        public static void Build(GameRuntime runtime, CombatService combatService, Action onReturnVillageRequested)
+        public static void Build(GameRuntime runtime, CombatService combatService, Action onReturnVillageRequested, Func<bool> canStartChopping)
         {
             var state = runtime.State;
             var inventoryService = runtime.InventoryService;
@@ -50,7 +50,7 @@ namespace IdleOnLike.UI
                 }
                 else
                 {
-                    gatheringService.StartGathering("tree");
+                    gatheringService.StartGathering("tree", canStartChopping());
                 }
             });
 
@@ -115,7 +115,8 @@ namespace IdleOnLike.UI
                 var characterName = character != null ? character.DisplayName : state.SaveData.characterName;
                 var resting = combatService.IsResting ? "    Resting" : string.Empty;
                 var activity = gatheringService.IsGathering ? "Chopping" : "Fighting";
-                status.text = $"{characterName}    {activity}    Lv. {state.SaveData.level}    HP: {state.SaveData.currentHp}/{combatService.MaxPlayerHp}    XP: {state.SaveData.experience}/{combatService.ExperienceRequired}    Coins: {state.SaveData.coins}    DMG: {combatService.PlayerDamage}{resting}";
+                var gatheringHint = gatheringService.IsGathering && !canStartChopping() ? "    Move near tree" : string.Empty;
+                status.text = $"{characterName}    {activity}    Lv. {state.SaveData.level}    HP: {state.SaveData.currentHp}/{combatService.MaxPlayerHp}    XP: {state.SaveData.experience}/{combatService.ExperienceRequired}    Coins: {state.SaveData.coins}    DMG: {combatService.PlayerDamage}{resting}{gatheringHint}";
                 activityButton.GetComponentInChildren<Text>().text = gatheringService.IsGathering ? "Fight" : "Chop";
 
                 if (combatService.CurrentTarget == null)

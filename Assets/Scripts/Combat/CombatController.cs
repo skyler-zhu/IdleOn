@@ -29,7 +29,7 @@ namespace IdleOnLike.Combat
             runtime = gameRuntime;
             combatService = new CombatService(runtime.State, runtime.InventoryService, runtime.EquipmentService, runtime.QuestService);
             combatView = CombatView.Create(runtime, combatService);
-            CombatHudScreen.Build(runtime, combatService, runtime.ReturnToVillage);
+            CombatHudScreen.Build(runtime, combatService, runtime.ReturnToVillage, () => combatView.IsPlayerNearTree(combatService.PlayerPosition));
             combatService.EnemyDefeated += OnEnemyDefeated;
             combatService.SpawnInitialEnemies(EnemyCount);
             StartCoroutine(CombatLoop());
@@ -44,7 +44,7 @@ namespace IdleOnLike.Combat
 
             var fighting = runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString();
             combatService.Tick(Time.deltaTime, Time.time, fighting);
-            runtime.GatheringService.Tick(Time.deltaTime);
+            runtime.GatheringService.Tick(Time.deltaTime, combatView.IsPlayerNearTree(combatService.PlayerPosition));
         }
 
         private IEnumerator CombatLoop()
