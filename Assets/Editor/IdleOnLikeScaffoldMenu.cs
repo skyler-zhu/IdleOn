@@ -164,6 +164,18 @@ namespace IdleOnLike.EditorTools
             SetQuestObjectives(firstQuest, (QuestObjectiveType.KillEnemy, "mushroom", 5, "Defeat Mushrooms"));
             SetRewardItems(firstQuest, (trainingSword, 1));
 
+            var learnToChopQuest = CreateAsset<QuestDefinition>($"{QuestPath}/Quest_LearnToChop.asset");
+            Set(learnToChopQuest, "id", "learn_to_chop");
+            Set(learnToChopQuest, "title", "Learn to Chop");
+            Set(learnToChopQuest, "description", "Gather wood from trees to open the crafting loop.");
+            Set(learnToChopQuest, "icon", itemSprite);
+            Set(learnToChopQuest, "rewards.coins", 30);
+            Set(learnToChopQuest, "rewards.experience", 40);
+            Set(learnToChopQuest, "unlockedSkill", chopping);
+            SetQuestObjectives(learnToChopQuest, (QuestObjectiveType.GatherResource, "tree", 5, "Chop Trees"));
+            SetRewardItems(learnToChopQuest);
+            Set(firstQuest, "nextQuest", learnToChopQuest);
+
             var swordRecipe = CreateAsset<RecipeDefinition>($"{RecipePath}/Recipe_TrainingSword.asset");
             Set(swordRecipe, "id", "training_sword");
             Set(swordRecipe, "displayName", "Training Sword");
@@ -172,6 +184,7 @@ namespace IdleOnLike.EditorTools
             Set(swordRecipe, "output.item", trainingSword);
             Set(swordRecipe, "output.quantity", 1);
             Set(swordRecipe, "icon", itemSprite);
+            SetRecipeIngredients(swordRecipe, (wood, 5), (cap, 2));
 
             var catalog = CreateAsset<GameCatalog>("Assets/ScriptableObjects/GameCatalog.asset");
             Set(catalog, "defaultCharacter", hero);
@@ -181,7 +194,7 @@ namespace IdleOnLike.EditorTools
             AddToList(catalog, "playableCharacters", hero, secondHero);
             AddToList(catalog, "items", wood, cap, trainingSword);
             AddToList(catalog, "enemies", mushroom, slime);
-            AddToList(catalog, "quests", firstQuest);
+            AddToList(catalog, "quests", firstQuest, learnToChopQuest);
             AddToList(catalog, "skills", chopping);
             AddToList(catalog, "zones", village, forest, expansion);
             AddToList(catalog, "recipes", swordRecipe);
@@ -425,6 +438,29 @@ namespace IdleOnLike.EditorTools
 
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(quest);
+        }
+
+        private static void SetRecipeIngredients(RecipeDefinition recipe, params (ItemDefinition item, int quantity)[] items)
+        {
+            var serializedObject = new SerializedObject(recipe);
+            var property = serializedObject.FindProperty("ingredients");
+            if (property == null || !property.isArray)
+            {
+                Debug.LogWarning($"List property 'ingredients' not found on {recipe.name}.");
+                return;
+            }
+
+            property.ClearArray();
+            for (var i = 0; i < items.Length; i++)
+            {
+                property.InsertArrayElementAtIndex(i);
+                var element = property.GetArrayElementAtIndex(i);
+                element.FindPropertyRelative("item").objectReferenceValue = items[i].item;
+                element.FindPropertyRelative("quantity").intValue = Mathf.Max(1, items[i].quantity);
+            }
+
+            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(recipe);
         }
     }
 }

@@ -25,16 +25,16 @@ namespace IdleOnLike.UI
             root = RuntimeUiFactory.CreatePanel(
                 parent,
                 "Quest Tracker",
-                new Vector2(0.02f, 0.18f),
-                new Vector2(0.25f, 0.78f),
+                new Vector2(0.01f, 0.12f),
+                new Vector2(0.22f, 0.58f),
                 Vector2.zero,
                 Vector2.zero,
                 new Color(0.07f, 0.08f, 0.10f, 0.92f));
 
-            var title = RuntimeUiFactory.CreateText(root, "Title", "Quest", 23, TextAnchor.MiddleLeft, Color.white);
+            var title = RuntimeUiFactory.CreateText(root, "Title", "Quest", 19, TextAnchor.MiddleLeft, Color.white);
             RuntimeUiFactory.SetRect(title.rectTransform, new Vector2(0.08f, 0.86f), new Vector2(0.92f, 0.98f), Vector2.zero, Vector2.zero);
 
-            bodyText = RuntimeUiFactory.CreateText(root, "Body", string.Empty, 17, TextAnchor.UpperLeft, new Color(0.88f, 0.92f, 0.96f));
+            bodyText = RuntimeUiFactory.CreateText(root, "Body", string.Empty, 14, TextAnchor.UpperLeft, new Color(0.88f, 0.92f, 0.96f));
             RuntimeUiFactory.SetRect(bodyText.rectTransform, new Vector2(0.08f, allowActions ? 0.22f : 0.06f), new Vector2(0.92f, 0.84f), Vector2.zero, Vector2.zero);
 
             if (allowActions)
@@ -53,48 +53,77 @@ namespace IdleOnLike.UI
 
         private void Refresh()
         {
-            if (isDisposed || root == null || bodyText == null)
+            if (isDisposed || runtime == null || runtime.State == null || root == null || bodyText == null)
             {
                 Dispose();
                 return;
             }
 
-            var quest = questService.GetPrimaryQuest();
-            if (quest == null)
+            var actionQuest = questService.GetNextActionableQuest();
+            bodyText.text = BuildQuestWindow();
+
+            if (actionQuest == null)
             {
-                bodyText.text = "All demo quests complete.";
                 SetAction(null, string.Empty, false);
                 return;
             }
-
-            var active = questService.IsQuestActive(quest.Id);
-            var completed = questService.IsQuestCompleted(quest.Id);
-            bodyText.text = BuildQuestText(quest, active, completed);
 
             if (!allowActions)
             {
                 return;
             }
 
-            if (completed)
+            if (questService.IsQuestCompleted(actionQuest.Id))
             {
                 SetAction(null, "Done", false);
             }
-            else if (!active)
+            else if (!questService.IsQuestActive(actionQuest.Id))
             {
-                SetAction(() => questService.AcceptQuest(quest.Id), "Accept", true);
+                SetAction(() => questService.AcceptQuest(actionQuest.Id), "Accept", true);
             }
             else
             {
-                var canComplete = questService.CanComplete(quest.Id);
-                SetAction(() => questService.CompleteQuest(quest.Id), "Complete", canComplete);
+                var canComplete = questService.CanComplete(actionQuest.Id);
+                SetAction(() => questService.CompleteQuest(actionQuest.Id), "Complete", canComplete);
             }
         }
 
-        private string BuildQuestText(QuestDefinition quest, bool active, bool completed)
+        private string BuildQuestWindow()
         {
-            var state = completed ? "Complete" : active ? "Active" : "Available";
-            var text = $"{quest.Title}\n{state}\n\n{quest.Description}\n";
+            if (!allowActions)
+            {
+                return BuildQuestSection("Active Quests", questService.GetActiveQuests(), true);
+            }
+
+            var text = BuildQuestSection("Available Quests", questService.GetAvailableQuests(), false);
+            text += "\n\n" + BuildQuestSection("Active Quests", questService.GetActiveQuests(), true);
+            text += "\n\n" + BuildQuestSection("Completed Quests", questService.GetCompletedQuests(), false);
+            return text;
+        }
+
+        private string BuildQuestSection(string title, System.Collections.Generic.IReadOnlyList<QuestDefinition> quests, bool showProgress)
+        {
+            var text = $"{title}";
+            if (quests.Count == 0)
+            {
+                return text + "\n- None";
+            }
+
+            foreach (var quest in quests)
+            {
+                text += $"\n- {quest.Title}";
+                if (showProgress)
+                {
+                    text += BuildQuestProgress(quest);
+                }
+            }
+
+            return text;
+        }
+
+        private string BuildQuestProgress(QuestDefinition quest)
+        {
+            var text = string.Empty;
 
             for (var i = 0; i < quest.Objectives.Count; i++)
             {
@@ -103,7 +132,7 @@ namespace IdleOnLike.UI
                 var label = string.IsNullOrEmpty(objective.displayText)
                     ? $"{objective.objectiveType}: {objective.targetId}"
                     : objective.displayText;
-                text += $"\n{label}: {progress}/{objective.requiredAmount}";
+                text += $"\n  {label}: {progress}/{objective.requiredAmount}";
             }
 
             return text;

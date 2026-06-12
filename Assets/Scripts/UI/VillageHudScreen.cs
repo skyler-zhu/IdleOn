@@ -10,6 +10,7 @@ namespace IdleOnLike.UI
         {
             var state = runtime.State;
             var canvas = RuntimeUiFactory.CreateCanvas("Village HUD");
+            var lifetime = canvas.GetComponent<RuntimeUiLifetime>();
             var topBar = RuntimeUiFactory.CreatePanel(
                 canvas.transform,
                 "Top Bar",
@@ -19,52 +20,70 @@ namespace IdleOnLike.UI
                 Vector2.zero,
                 new Color(0.08f, 0.09f, 0.11f, 0.92f));
 
-            var zone = state.CurrentZone;
-            var character = state.Character;
-            var characterName = character != null ? character.DisplayName : state.SaveData.characterName;
-            var zoneName = zone != null ? zone.DisplayName : state.SaveData.currentZoneId;
-
             var status = RuntimeUiFactory.CreateText(
                 topBar,
                 "Status",
-                $"{characterName}    Lv. {state.SaveData.level}    Coins: {state.SaveData.coins}    Zone: {zoneName}",
+                string.Empty,
                 24,
                 TextAnchor.MiddleLeft,
                 Color.white);
-            RuntimeUiFactory.SetRect(status.rectTransform, new Vector2(0.03f, 0f), new Vector2(0.49f, 1f), Vector2.zero, Vector2.zero);
+            RuntimeUiFactory.SetRect(status.rectTransform, new Vector2(0.02f, 0f), new Vector2(0.42f, 1f), Vector2.zero, Vector2.zero);
 
             var inventoryPanel = new InventoryEquipmentPanel(runtime, canvas.transform);
+            var craftingPanel = new CraftingPanel(runtime, canvas.transform);
             _ = new QuestTrackerPanel(runtime, canvas.transform, true);
+            var inventoryService = runtime.InventoryService;
+            var equipmentService = runtime.EquipmentService;
+            var questService = runtime.QuestService;
+            var craftingService = runtime.CraftingService;
 
             var inventoryButton = RuntimeUiFactory.CreateButton(topBar, "Inventory Button", "Inventory", new Color(0.26f, 0.30f, 0.46f, 1f));
-            RuntimeUiFactory.SetRect(inventoryButton.GetComponent<RectTransform>(), new Vector2(0.51f, 0.20f), new Vector2(0.63f, 0.80f), Vector2.zero, Vector2.zero);
+            RuntimeUiFactory.SetRect(inventoryButton.GetComponent<RectTransform>(), new Vector2(0.44f, 0.20f), new Vector2(0.55f, 0.80f), Vector2.zero, Vector2.zero);
             inventoryButton.onClick.AddListener(inventoryPanel.Toggle);
 
-            var forestButton = RuntimeUiFactory.CreateButton(topBar, "Go Forest Button", "Go Forest", new Color(0.18f, 0.42f, 0.24f, 1f));
-            RuntimeUiFactory.SetRect(forestButton.GetComponent<RectTransform>(), new Vector2(0.64f, 0.20f), new Vector2(0.79f, 0.80f), Vector2.zero, Vector2.zero);
+            var craftingButton = RuntimeUiFactory.CreateButton(topBar, "Crafting Button", "Crafting", new Color(0.40f, 0.30f, 0.18f, 1f));
+            RuntimeUiFactory.SetRect(craftingButton.GetComponent<RectTransform>(), new Vector2(0.56f, 0.20f), new Vector2(0.67f, 0.80f), Vector2.zero, Vector2.zero);
+            craftingButton.onClick.AddListener(craftingPanel.Toggle);
+
+            var offlineButton = RuntimeUiFactory.CreateButton(topBar, "Offline Button", "Sim 1h", new Color(0.22f, 0.35f, 0.42f, 1f));
+            RuntimeUiFactory.SetRect(offlineButton.GetComponent<RectTransform>(), new Vector2(0.68f, 0.20f), new Vector2(0.77f, 0.80f), Vector2.zero, Vector2.zero);
+            offlineButton.onClick.AddListener(() => OfflineGainsPanel.Show(runtime.SimulateOfflineHour()));
+
+            var forestButton = RuntimeUiFactory.CreateButton(topBar, "Go Forest Button", "Forest", new Color(0.18f, 0.42f, 0.24f, 1f));
+            RuntimeUiFactory.SetRect(forestButton.GetComponent<RectTransform>(), new Vector2(0.78f, 0.20f), new Vector2(0.87f, 0.80f), Vector2.zero, Vector2.zero);
             forestButton.onClick.AddListener(() => onGoForestRequested());
 
             var newGameButton = RuntimeUiFactory.CreateButton(topBar, "New Game Button", "New Save", new Color(0.42f, 0.18f, 0.18f, 1f));
-            RuntimeUiFactory.SetRect(newGameButton.GetComponent<RectTransform>(), new Vector2(0.82f, 0.20f), new Vector2(0.97f, 0.80f), Vector2.zero, Vector2.zero);
+            RuntimeUiFactory.SetRect(newGameButton.GetComponent<RectTransform>(), new Vector2(0.88f, 0.20f), new Vector2(0.98f, 0.80f), Vector2.zero, Vector2.zero);
             newGameButton.onClick.AddListener(() => onNewGameRequested());
 
-            var centerPanel = RuntimeUiFactory.CreatePanel(
-                canvas.transform,
-                "Demo Panel",
-                new Vector2(0.28f, 0.34f),
-                new Vector2(0.72f, 0.66f),
-                Vector2.zero,
-                Vector2.zero,
-                new Color(0.13f, 0.20f, 0.16f, 0.82f));
+            inventoryService.Changed += Refresh;
+            equipmentService.Changed += Refresh;
+            questService.Changed += Refresh;
+            craftingService.Changed += Refresh;
+            lifetime?.Register(() =>
+            {
+                inventoryService.Changed -= Refresh;
+                equipmentService.Changed -= Refresh;
+                questService.Changed -= Refresh;
+                craftingService.Changed -= Refresh;
+            });
 
-            var message = RuntimeUiFactory.CreateText(
-                centerPanel,
-                "Message",
-                "Village loaded from Boot. Save data is active.\nUse Go Forest to test the idle combat loop.",
-                24,
-                TextAnchor.MiddleCenter,
-                Color.white);
-            RuntimeUiFactory.Stretch(message.rectTransform, new Vector2(24f, 24f), new Vector2(-24f, -24f));
+            Refresh();
+
+            void Refresh()
+            {
+                if (status == null || runtime.State == null)
+                {
+                    return;
+                }
+
+                var zone = state.CurrentZone;
+                var character = state.Character;
+                var characterName = character != null ? character.DisplayName : state.SaveData.characterName;
+                var zoneName = zone != null ? zone.DisplayName : state.SaveData.currentZoneId;
+                status.text = $"{characterName}    Lv. {state.SaveData.level}    Coins: {state.SaveData.coins}    Zone: {zoneName}";
+            }
         }
     }
 }

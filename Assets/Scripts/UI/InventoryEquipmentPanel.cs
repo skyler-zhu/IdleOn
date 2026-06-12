@@ -72,7 +72,7 @@ namespace IdleOnLike.UI
 
         private void Refresh()
         {
-            if (isDisposed || root == null || inventoryList == null || equipmentList == null)
+            if (isDisposed || runtime == null || runtime.State == null || root == null || inventoryList == null || equipmentList == null)
             {
                 Dispose();
                 return;

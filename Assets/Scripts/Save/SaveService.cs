@@ -27,6 +27,10 @@ namespace IdleOnLike.Save
                 var json = File.ReadAllText(SavePath);
                 var saveData = JsonUtility.FromJson<PlayerSaveData>(json);
                 saveData?.EnsureCollections();
+                if (saveData != null && string.IsNullOrEmpty(saveData.lastSavedUtc))
+                {
+                    saveData.lastSavedUtc = DateTime.UtcNow.ToString("O");
+                }
                 return saveData;
             }
             catch (Exception exception)

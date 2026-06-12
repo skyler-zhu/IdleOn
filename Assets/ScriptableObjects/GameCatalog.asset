@@ -28,6 +28,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9b7b0c0f3ad64f3ea979b3e90db6a4b6, type: 2}
   quests:
   - {fileID: 11400000, guid: 4d7c7a654156f5747b96aedb6c10e13c, type: 2}
+  - {fileID: 11400000, guid: 1503b84ff22243d1b2c82b0468f2298a, type: 2}
   skills:
   - {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}
   zones:

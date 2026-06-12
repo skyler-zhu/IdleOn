@@ -1,5 +1,6 @@
 using System.Collections;
 using IdleOnLike.Core;
+using IdleOnLike.Data;
 using IdleOnLike.UI;
 using UnityEngine;
 
@@ -7,11 +8,13 @@ namespace IdleOnLike.Combat
 {
     public sealed class CombatController : MonoBehaviour
     {
+        private const int EnemyCount = 3;
         private const float AttackSeconds = 1f;
         private const float RespawnSeconds = 1f;
 
+        private GameRuntime runtime;
         private CombatService combatService;
-        private bool waitingForRespawn;
+        private CombatView combatView;
 
         public static CombatController Create(GameRuntime runtime)
         {
@@ -21,13 +24,27 @@ namespace IdleOnLike.Combat
             return controller;
         }
 
-        private void Initialize(GameRuntime runtime)
+        private void Initialize(GameRuntime gameRuntime)
         {
+            runtime = gameRuntime;
             combatService = new CombatService(runtime.State, runtime.InventoryService, runtime.EquipmentService, runtime.QuestService);
+            combatView = CombatView.Create(runtime, combatService);
             CombatHudScreen.Build(runtime, combatService, runtime.ReturnToVillage);
-            combatService.EnemyDefeated += runtime.Save;
-            combatService.SpawnNextEnemy();
+            combatService.EnemyDefeated += OnEnemyDefeated;
+            combatService.SpawnInitialEnemies(EnemyCount);
             StartCoroutine(CombatLoop());
+        }
+
+        private void Update()
+        {
+            if (combatService == null)
+            {
+                return;
+            }
+
+            var fighting = runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString();
+            combatService.Tick(Time.deltaTime, Time.time, fighting);
+            runtime.GatheringService.Tick(Time.deltaTime);
         }
 
         private IEnumerator CombatLoop()
@@ -35,26 +52,31 @@ namespace IdleOnLike.Combat
             while (enabled)
             {
                 yield return new WaitForSeconds(AttackSeconds);
-
-                if (waitingForRespawn)
+                if (runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString())
                 {
-                    continue;
-                }
-
-                var defeated = combatService.AttackCurrentEnemy();
-                if (defeated)
-                {
-                    StartCoroutine(RespawnAfterDelay());
+                    combatService.AttackCurrentTarget();
                 }
             }
         }
 
-        private IEnumerator RespawnAfterDelay()
+        private void OnEnemyDefeated(CombatEnemyInstance enemy)
         {
-            waitingForRespawn = true;
+            runtime.Save();
+            StartCoroutine(RespawnAfterDelay(enemy));
+        }
+
+        private IEnumerator RespawnAfterDelay(CombatEnemyInstance enemy)
+        {
             yield return new WaitForSeconds(RespawnSeconds);
-            combatService.SpawnNextEnemy();
-            waitingForRespawn = false;
+            combatService.ReplaceEnemy(enemy);
+        }
+
+        private void OnDestroy()
+        {
+            if (combatService != null)
+            {
+                combatService.EnemyDefeated -= OnEnemyDefeated;
+            }
         }
     }
 }

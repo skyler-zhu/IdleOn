@@ -17,7 +17,11 @@ MonoBehaviour:
   description: Starter craft that demonstrates material conversion into power.
   requiredSkill: {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}
   requiredSkillLevel: 1
-  ingredients: []
+  ingredients:
+  - item: {fileID: 11400000, guid: 6a9e4c66742ff5144bb68597195b6dd0, type: 2}
+    quantity: 5
+  - item: {fileID: 11400000, guid: 8e46aabfb31e4854ca2149fd3ad4a0d8, type: 2}
+    quantity: 2
   output:
     item: {fileID: 11400000, guid: 4e0d5c685a2eb4c48a3439dcfbb9a527, type: 2}
     quantity: 1

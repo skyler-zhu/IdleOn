@@ -57,6 +57,13 @@ Boot
 → equip any equipment item in inventory
 → Return Village
 → complete First Steps
+→ Learn to Chop becomes active
+→ Go Forest
+→ switch to Chopping
+→ gather Wood
+→ use Sim 1h to preview offline gains
+→ Return Village
+→ craft Training Sword
 ```
 
 The save file is stored as JSON in `Application.persistentDataPath` under `idleon_like_save.json`.

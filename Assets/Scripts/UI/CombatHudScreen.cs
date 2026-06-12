@@ -9,13 +9,14 @@ namespace IdleOnLike.UI
 {
     public static class CombatHudScreen
     {
-        private const int MaxLogLines = 8;
+        private const int MaxLogLines = 4;
 
         public static void Build(GameRuntime runtime, CombatService combatService, Action onReturnVillageRequested)
         {
             var state = runtime.State;
             var inventoryService = runtime.InventoryService;
             var equipmentService = runtime.EquipmentService;
+            var gatheringService = runtime.GatheringService;
             var logLines = new List<string>();
             var canvas = RuntimeUiFactory.CreateCanvas("Combat HUD");
             var lifetime = canvas.GetComponent<RuntimeUiLifetime>();
@@ -30,14 +31,32 @@ namespace IdleOnLike.UI
                 new Color(0.08f, 0.09f, 0.11f, 0.92f));
 
             var status = RuntimeUiFactory.CreateText(topBar, "Status", string.Empty, 22, TextAnchor.MiddleLeft, Color.white);
-            RuntimeUiFactory.SetRect(status.rectTransform, new Vector2(0.03f, 0f), new Vector2(0.62f, 1f), Vector2.zero, Vector2.zero);
+            RuntimeUiFactory.SetRect(status.rectTransform, new Vector2(0.02f, 0f), new Vector2(0.44f, 1f), Vector2.zero, Vector2.zero);
 
             var inventoryPanel = new InventoryEquipmentPanel(runtime, canvas.transform);
             _ = new QuestTrackerPanel(runtime, canvas.transform, false);
 
             var inventoryButton = RuntimeUiFactory.CreateButton(topBar, "Inventory Button", "Inventory", new Color(0.26f, 0.30f, 0.46f, 1f));
-            RuntimeUiFactory.SetRect(inventoryButton.GetComponent<RectTransform>(), new Vector2(0.64f, 0.20f), new Vector2(0.78f, 0.80f), Vector2.zero, Vector2.zero);
+            RuntimeUiFactory.SetRect(inventoryButton.GetComponent<RectTransform>(), new Vector2(0.45f, 0.20f), new Vector2(0.56f, 0.80f), Vector2.zero, Vector2.zero);
             inventoryButton.onClick.AddListener(inventoryPanel.Toggle);
+
+            var activityButton = RuntimeUiFactory.CreateButton(topBar, "Activity Button", "Chop", new Color(0.24f, 0.42f, 0.24f, 1f));
+            RuntimeUiFactory.SetRect(activityButton.GetComponent<RectTransform>(), new Vector2(0.57f, 0.20f), new Vector2(0.66f, 0.80f), Vector2.zero, Vector2.zero);
+            activityButton.onClick.AddListener(() =>
+            {
+                if (gatheringService.IsGathering)
+                {
+                    gatheringService.StopGathering();
+                }
+                else
+                {
+                    gatheringService.StartGathering("tree");
+                }
+            });
+
+            var offlineButton = RuntimeUiFactory.CreateButton(topBar, "Offline Button", "Sim 1h", new Color(0.22f, 0.35f, 0.42f, 1f));
+            RuntimeUiFactory.SetRect(offlineButton.GetComponent<RectTransform>(), new Vector2(0.67f, 0.20f), new Vector2(0.78f, 0.80f), Vector2.zero, Vector2.zero);
+            offlineButton.onClick.AddListener(() => OfflineGainsPanel.Show(runtime.SimulateOfflineHour()));
 
             var returnButton = RuntimeUiFactory.CreateButton(topBar, "Return Village Button", "Return Village", new Color(0.24f, 0.38f, 0.58f, 1f));
             RuntimeUiFactory.SetRect(returnButton.GetComponent<RectTransform>(), new Vector2(0.80f, 0.20f), new Vector2(0.97f, 0.80f), Vector2.zero, Vector2.zero);
@@ -46,37 +65,41 @@ namespace IdleOnLike.UI
             var enemyPanel = RuntimeUiFactory.CreatePanel(
                 canvas.transform,
                 "Enemy Panel",
-                new Vector2(0.28f, 0.50f),
-                new Vector2(0.72f, 0.74f),
+                new Vector2(0.32f, 0.70f),
+                new Vector2(0.62f, 0.84f),
                 Vector2.zero,
                 Vector2.zero,
                 new Color(0.16f, 0.14f, 0.12f, 0.88f));
 
-            var enemyText = RuntimeUiFactory.CreateText(enemyPanel, "Enemy Text", string.Empty, 28, TextAnchor.MiddleCenter, Color.white);
+            var enemyText = RuntimeUiFactory.CreateText(enemyPanel, "Enemy Text", string.Empty, 20, TextAnchor.MiddleCenter, Color.white);
             RuntimeUiFactory.Stretch(enemyText.rectTransform, new Vector2(18f, 18f), new Vector2(-18f, -18f));
 
             var logPanel = RuntimeUiFactory.CreatePanel(
                 canvas.transform,
                 "Combat Log Panel",
-                new Vector2(0.24f, 0.14f),
-                new Vector2(0.76f, 0.46f),
+                new Vector2(0.24f, 0.02f),
+                new Vector2(0.76f, 0.16f),
                 Vector2.zero,
                 Vector2.zero,
                 new Color(0.07f, 0.08f, 0.09f, 0.88f));
 
-            var logText = RuntimeUiFactory.CreateText(logPanel, "Combat Log", string.Empty, 18, TextAnchor.UpperLeft, new Color(0.88f, 0.92f, 0.96f));
+            var logText = RuntimeUiFactory.CreateText(logPanel, "Combat Log", string.Empty, 14, TextAnchor.UpperLeft, new Color(0.88f, 0.92f, 0.96f));
             RuntimeUiFactory.Stretch(logText.rectTransform, new Vector2(18f, 14f), new Vector2(-18f, -14f));
 
             combatService.Changed += Refresh;
             combatService.LogAdded += AddLog;
+            gatheringService.LogAdded += AddLog;
             inventoryService.Changed += Refresh;
             equipmentService.Changed += Refresh;
+            gatheringService.Changed += Refresh;
             lifetime?.Register(() =>
             {
                 combatService.Changed -= Refresh;
                 combatService.LogAdded -= AddLog;
+                gatheringService.LogAdded -= AddLog;
                 inventoryService.Changed -= Refresh;
                 equipmentService.Changed -= Refresh;
+                gatheringService.Changed -= Refresh;
             });
 
             Refresh();
@@ -90,15 +113,18 @@ namespace IdleOnLike.UI
 
                 var character = state.Character;
                 var characterName = character != null ? character.DisplayName : state.SaveData.characterName;
-                status.text = $"{characterName}    Lv. {state.SaveData.level}    XP: {state.SaveData.experience}/{combatService.ExperienceRequired}    Coins: {state.SaveData.coins}    DMG: {combatService.PlayerDamage}";
+                var resting = combatService.IsResting ? "    Resting" : string.Empty;
+                var activity = gatheringService.IsGathering ? "Chopping" : "Fighting";
+                status.text = $"{characterName}    {activity}    Lv. {state.SaveData.level}    HP: {state.SaveData.currentHp}/{combatService.MaxPlayerHp}    XP: {state.SaveData.experience}/{combatService.ExperienceRequired}    Coins: {state.SaveData.coins}    DMG: {combatService.PlayerDamage}{resting}";
+                activityButton.GetComponentInChildren<Text>().text = gatheringService.IsGathering ? "Fight" : "Chop";
 
-                if (combatService.CurrentEnemy == null)
+                if (combatService.CurrentTarget == null)
                 {
                     enemyText.text = "Looking for enemies...";
                     return;
                 }
 
-                enemyText.text = $"{combatService.CurrentEnemy.DisplayName}\nHP: {combatService.CurrentEnemyHp}/{combatService.CurrentEnemy.MaxHp}";
+                enemyText.text = $"{combatService.CurrentTarget.enemyDefinition.DisplayName}\nHP: {combatService.CurrentTarget.currentHp}/{combatService.CurrentTarget.enemyDefinition.MaxHp}";
             }
 
             void AddLog(string message)

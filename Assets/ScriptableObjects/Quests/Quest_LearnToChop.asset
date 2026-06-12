@@ -10,25 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8dcf01cafab9ae14c866ca61ac994744, type: 3}
-  m_Name: Quest_FirstSteps
+  m_Name: Quest_LearnToChop
   m_EditorClassIdentifier: 
-  id: first_steps
-  title: First Steps
-  description: Defeat a few mushrooms to prove the auto-combat loop.
+  id: learn_to_chop
+  title: Learn to Chop
+  description: Gather wood from trees to open the crafting loop.
   icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
   giverName: Scripticus
   giverPortrait: {fileID: 0}
   objectives:
-  - objectiveType: 0
-    targetId: mushroom
+  - objectiveType: 2
+    targetId: tree
     requiredAmount: 5
-    displayText: Defeat Mushrooms
+    displayText: Chop Trees
   rewards:
-    coins: 50
-    experience: 25
-    items:
-    - item: {fileID: 11400000, guid: 4e0d5c685a2eb4c48a3439dcfbb9a527, type: 2}
-      quantity: 1
-  nextQuest: {fileID: 11400000, guid: 1503b84ff22243d1b2c82b0468f2298a, type: 2}
+    coins: 30
+    experience: 40
+    items: []
+  nextQuest: {fileID: 0}
   unlockedZone: {fileID: 0}
-  unlockedSkill: {fileID: 0}
+  unlockedSkill: {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}

@@ -1,9 +1,13 @@
+using System;
 using IdleOnLike.Combat;
+using IdleOnLike.Crafting;
 using IdleOnLike.Data;
 using IdleOnLike.Equipment;
 using IdleOnLike.Inventory;
+using IdleOnLike.Progression;
 using IdleOnLike.Quests;
 using IdleOnLike.Save;
+using IdleOnLike.Skills;
 using IdleOnLike.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,6 +24,10 @@ namespace IdleOnLike.Core
         private InventoryService inventoryService;
         private EquipmentService equipmentService;
         private QuestService questService;
+        private GatheringService gatheringService;
+        private CraftingService craftingService;
+        private OfflineProgressService offlineProgressService;
+        private OfflineGainsResult pendingOfflineGains;
 
         public GameState State { get; private set; }
         public GameCatalog Catalog => catalog;
@@ -27,6 +35,9 @@ namespace IdleOnLike.Core
         public InventoryService InventoryService => inventoryService;
         public EquipmentService EquipmentService => equipmentService;
         public QuestService QuestService => questService;
+        public GatheringService GatheringService => gatheringService;
+        public CraftingService CraftingService => craftingService;
+        public OfflineGainsResult PendingOfflineGains => pendingOfflineGains;
 
         public void Initialize(GameCatalog gameCatalog)
         {
@@ -53,6 +64,7 @@ namespace IdleOnLike.Core
 
             State = new GameState(catalog, saveData);
             CreateRuntimeServices();
+            TryApplyStartupOfflineGains();
             var zone = State.CurrentZone != null ? State.CurrentZone : catalog.VillageZone;
             sceneLoader.LoadZone(zone);
         }
@@ -110,7 +122,23 @@ namespace IdleOnLike.Core
             inventoryService = null;
             equipmentService = null;
             questService = null;
+            gatheringService = null;
+            craftingService = null;
+            offlineProgressService = null;
+            pendingOfflineGains = null;
             sceneLoader.LoadScene("CharacterSelect");
+        }
+
+        public OfflineGainsResult SimulateOfflineHour()
+        {
+            if (offlineProgressService == null)
+            {
+                return null;
+            }
+
+            var result = offlineProgressService.CalculateOfflineGains(TimeSpan.FromHours(1));
+            Save();
+            return result;
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -129,10 +157,12 @@ namespace IdleOnLike.Core
             if (State.CurrentZone == catalog.ForestZone)
             {
                 CombatController.Create(this);
+                ShowPendingOfflineGainsIfAny();
                 return;
             }
 
             VillageHudScreen.Build(this, TravelToForest, DeleteSaveAndReturnToCharacterSelect);
+            ShowPendingOfflineGainsIfAny();
         }
 
         private void CreateRuntimeServices()
@@ -140,10 +170,44 @@ namespace IdleOnLike.Core
             inventoryService = new InventoryService(State);
             equipmentService = new EquipmentService(State, inventoryService);
             questService = new QuestService(State, inventoryService);
+            gatheringService = new GatheringService(State.SaveData, inventoryService, questService);
+            craftingService = new CraftingService(State, inventoryService);
+            offlineProgressService = new OfflineProgressService(State.SaveData, catalog, inventoryService, questService);
             inventoryService.ItemAdded += questService.AddProgress;
             inventoryService.Changed += Save;
             equipmentService.Changed += Save;
             questService.Changed += Save;
+            gatheringService.Changed += Save;
+            craftingService.Changed += Save;
+        }
+
+        private void TryApplyStartupOfflineGains()
+        {
+            if (!DateTime.TryParse(State.SaveData.lastSavedUtc, out var lastSavedUtc))
+            {
+                State.SaveData.lastSavedUtc = DateTime.UtcNow.ToString("O");
+                return;
+            }
+
+            var elapsed = DateTime.UtcNow - lastSavedUtc.ToUniversalTime();
+            if (elapsed < TimeSpan.FromMinutes(1))
+            {
+                return;
+            }
+
+            pendingOfflineGains = offlineProgressService.CalculateOfflineGains(elapsed);
+            Save();
+        }
+
+        private void ShowPendingOfflineGainsIfAny()
+        {
+            if (pendingOfflineGains == null)
+            {
+                return;
+            }
+
+            OfflineGainsPanel.Show(pendingOfflineGains);
+            pendingOfflineGains = null;
         }
 
         private void OnDestroy()

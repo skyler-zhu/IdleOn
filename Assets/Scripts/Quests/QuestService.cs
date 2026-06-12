@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using IdleOnLike.Core;
 using IdleOnLike.Data;
 using IdleOnLike.Inventory;
@@ -140,24 +142,62 @@ namespace IdleOnLike.Quests
 
         public QuestDefinition GetPrimaryQuest()
         {
-            foreach (var questId in state.SaveData.activeQuestIds)
+            return GetNextActionableQuest();
+        }
+
+        public IReadOnlyList<QuestDefinition> GetAvailableQuests()
+        {
+            return state.Catalog.Quests
+                .Where(quest => quest != null && !IsQuestActive(quest.Id) && !IsQuestCompleted(quest.Id) && IsPrerequisiteMet(quest))
+                .ToList();
+        }
+
+        public IReadOnlyList<QuestDefinition> GetActiveQuests()
+        {
+            return state.SaveData.activeQuestIds
+                .Select(questId => state.Catalog.FindQuest(questId))
+                .Where(quest => quest != null)
+                .ToList();
+        }
+
+        public IReadOnlyList<QuestDefinition> GetCompletedQuests()
+        {
+            return state.SaveData.completedQuestIds
+                .Select(questId => state.Catalog.FindQuest(questId))
+                .Where(quest => quest != null)
+                .ToList();
+        }
+
+        public QuestDefinition GetNextActionableQuest()
+        {
+            foreach (var quest in GetActiveQuests())
             {
-                var quest = state.Catalog.FindQuest(questId);
-                if (quest != null)
+                if (CanComplete(quest.Id))
                 {
                     return quest;
                 }
             }
 
-            foreach (var quest in state.Catalog.Quests)
+            var activeQuest = GetActiveQuests().FirstOrDefault();
+            if (activeQuest != null)
             {
-                if (quest != null && !IsQuestCompleted(quest.Id))
+                return activeQuest;
+            }
+
+            return GetAvailableQuests().FirstOrDefault();
+        }
+
+        private bool IsPrerequisiteMet(QuestDefinition quest)
+        {
+            foreach (var possiblePrevious in state.Catalog.Quests)
+            {
+                if (possiblePrevious != null && possiblePrevious.NextQuest == quest)
                 {
-                    return quest;
+                    return IsQuestCompleted(possiblePrevious.Id);
                 }
             }
 
-            return null;
+            return true;
         }
 
         private SaveQuestProgress GetProgressEntry(string questId, int objectiveIndex, bool create)
