@@ -11,6 +11,8 @@ namespace IdleOnLike.Quests
 {
     public sealed class QuestService
     {
+        private const string SecondCharacterUnlockQuestId = "learn_to_chop";
+
         private readonly GameState state;
         private readonly InventoryService inventoryService;
 
@@ -57,6 +59,7 @@ namespace IdleOnLike.Quests
             }
 
             AwardRewards(quest.Rewards);
+            UnlockCharactersForQuest(quest);
             LogAdded?.Invoke($"Quest complete: {quest.Title}");
 
             if (quest.NextQuest != null)
@@ -66,6 +69,23 @@ namespace IdleOnLike.Quests
 
             Changed?.Invoke();
             return true;
+        }
+
+        private void UnlockCharactersForQuest(QuestDefinition quest)
+        {
+            if (quest.Id != SecondCharacterUnlockQuestId || state.Catalog.PlayableCharacters.Count < 2)
+            {
+                return;
+            }
+
+            var character = state.Catalog.PlayableCharacters[1];
+            if (character == null || state.SaveData.unlockedCharacterIds.Contains(character.Id))
+            {
+                return;
+            }
+
+            state.SaveData.unlockedCharacterIds.Add(character.Id);
+            LogAdded?.Invoke($"Character unlocked: {character.DisplayName}.");
         }
 
         public bool IsQuestActive(string questId)

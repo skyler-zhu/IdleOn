@@ -21,6 +21,7 @@ namespace IdleOnLike.Save
         public List<string> activeQuestIds = new List<string>();
         public List<string> completedQuestIds = new List<string>();
         public List<SaveQuestProgress> questProgress = new List<SaveQuestProgress>();
+        public List<string> unlockedCharacterIds = new List<string>();
 
         public void EnsureCollections()
         {
@@ -47,6 +48,16 @@ namespace IdleOnLike.Save
             if (questProgress == null)
             {
                 questProgress = new List<SaveQuestProgress>();
+            }
+
+            if (unlockedCharacterIds == null)
+            {
+                unlockedCharacterIds = new List<string>();
+            }
+
+            if (!string.IsNullOrEmpty(characterId) && unlockedCharacterIds.Count == 0)
+            {
+                unlockedCharacterIds.Add(characterId);
             }
 
             if (string.IsNullOrEmpty(currentActivity))
@@ -83,6 +94,11 @@ namespace IdleOnLike.Save
                     slot = EquipmentSlot.Weapon,
                     itemId = character.StartingWeapon.Id
                 });
+            }
+
+            if (!string.IsNullOrEmpty(character.Id))
+            {
+                saveData.unlockedCharacterIds.Add(character.Id);
             }
 
             return saveData;

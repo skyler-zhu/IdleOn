@@ -81,6 +81,31 @@ namespace IdleOnLike.Skills
             }
 
             gatherTimer -= 2f;
+            GatherWood();
+        }
+
+        public bool GatherOnce(bool canGather)
+        {
+            if (!IsGathering)
+            {
+                return false;
+            }
+
+            if (!canGather)
+            {
+                gatherTimer = 0f;
+                LogAdded?.Invoke("Move near tree.");
+                Changed?.Invoke();
+                return false;
+            }
+
+            gatherTimer = 0f;
+            GatherWood();
+            return true;
+        }
+
+        private void GatherWood()
+        {
             inventoryService.AddItem(WoodItemId, 1);
             questService.AddProgress(QuestObjectiveType.GatherResource, TreeNodeId, 1);
             LogAdded?.Invoke("Chopped Wood x1.");

@@ -19,6 +19,9 @@ namespace IdleOnLike.Combat
         private const float EnemyWanderSpeed = 0.58f;
         private const float EnemyWanderRadius = 1.05f;
         private const float EnemyVerticalWanderRadius = 0.08f;
+        private const float ManualMoveMinX = -3.55f;
+        private const float ManualMoveMaxX = 3.45f;
+        private const float JumpDuration = 0.72f;
         private static readonly Vector3 PlayerPositionValue = new Vector3(-3.25f, -1.05f, 0f);
         private static readonly Vector3 TreeGatherPosition = new Vector3(2.55f, -1.05f, 0f);
 
@@ -31,6 +34,7 @@ namespace IdleOnLike.Combat
 
         private Vector3 playerPosition = PlayerPositionValue;
         private float restRemainingSeconds;
+        private float jumpRemainingSeconds;
 
         public CombatService(GameState state, InventoryService inventoryService, EquipmentService equipmentService, QuestService questService)
         {
@@ -53,6 +57,8 @@ namespace IdleOnLike.Combat
         public int ExperienceRequired => ProgressionService.GetExperienceRequired(state.SaveData.level);
         public bool IsResting => restRemainingSeconds > 0f;
         public bool IsPlayerNearTree => Vector3.Distance(playerPosition, TreeGatherPosition) <= 0.85f;
+        public bool IsJumping => jumpRemainingSeconds > 0f;
+        public float JumpProgress => IsJumping ? Mathf.Clamp01(1f - jumpRemainingSeconds / JumpDuration) : 0f;
 
         public event Action Changed;
         public event Action<string> LogAdded;
@@ -131,8 +137,18 @@ namespace IdleOnLike.Combat
             return true;
         }
 
-        public void Tick(float deltaTime, float time, bool fightingActive)
+        public void Tick(float deltaTime, float time, bool fightingActive, bool autoMode)
         {
+            if (jumpRemainingSeconds > 0f)
+            {
+                jumpRemainingSeconds -= deltaTime;
+                if (jumpRemainingSeconds <= 0f)
+                {
+                    jumpRemainingSeconds = 0f;
+                    NotifyChanged();
+                }
+            }
+
             if (IsResting)
             {
                 restRemainingSeconds -= deltaTime;
@@ -147,11 +163,11 @@ namespace IdleOnLike.Combat
                 return;
             }
 
-            if (fightingActive)
+            if (autoMode && fightingActive)
             {
                 MovePlayerTowardTarget(deltaTime);
             }
-            else
+            else if (autoMode)
             {
                 playerPosition = Vector3.MoveTowards(playerPosition, TreeGatherPosition, PlayerMoveSpeed * deltaTime);
             }
@@ -165,7 +181,7 @@ namespace IdleOnLike.Combat
 
                 WanderEnemy(enemy, deltaTime, time);
 
-                if (fightingActive && Vector3.Distance(enemy.currentPosition, PlayerPosition) <= ContactDistance && time >= enemy.nextAttackTime)
+                if (fightingActive && !IsJumping && Vector3.Distance(enemy.currentPosition, PlayerPosition) <= ContactDistance && time >= enemy.nextAttackTime)
                 {
                     enemy.nextAttackTime = time + enemy.enemyDefinition.AttackInterval;
                     DamagePlayer(enemy.enemyDefinition.AttackDamage, enemy.enemyDefinition.DisplayName);
@@ -173,6 +189,29 @@ namespace IdleOnLike.Combat
             }
 
             SelectCurrentTarget();
+            NotifyChanged();
+        }
+
+        public void MovePlayerManual(float horizontal, float deltaTime)
+        {
+            if (Mathf.Abs(horizontal) <= 0.01f || IsResting)
+            {
+                return;
+            }
+
+            playerPosition.x = Mathf.Clamp(playerPosition.x + horizontal * PlayerMoveSpeed * deltaTime, ManualMoveMinX, ManualMoveMaxX);
+            NotifyChanged();
+        }
+
+        public void Jump()
+        {
+            if (IsResting || IsJumping)
+            {
+                return;
+            }
+
+            jumpRemainingSeconds = JumpDuration;
+            AddLog("Jumped over danger.");
             NotifyChanged();
         }
 

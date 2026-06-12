@@ -79,6 +79,18 @@ namespace IdleOnLike.Core
             }
 
             var saveData = PlayerSaveData.CreateNew(character, catalog.VillageZone);
+            if (State != null)
+            {
+                State.SaveData.EnsureCollections();
+                foreach (var unlockedCharacterId in State.SaveData.unlockedCharacterIds)
+                {
+                    if (!saveData.unlockedCharacterIds.Contains(unlockedCharacterId))
+                    {
+                        saveData.unlockedCharacterIds.Add(unlockedCharacterId);
+                    }
+                }
+            }
+
             State = new GameState(catalog, saveData);
             CreateRuntimeServices();
             saveService.Save(saveData);
@@ -130,6 +142,12 @@ namespace IdleOnLike.Core
             sceneLoader.LoadScene("CharacterSelect");
         }
 
+        public void ReturnToCharacterSelect()
+        {
+            Save();
+            sceneLoader.LoadScene("CharacterSelect");
+        }
+
         public OfflineGainsResult SimulateOfflineHour()
         {
             if (offlineProgressService == null)
@@ -146,7 +164,7 @@ namespace IdleOnLike.Core
         {
             if (scene.name == "CharacterSelect")
             {
-                CharacterSelectScreen.Build(catalog, StartNewGame);
+                CharacterSelectScreen.Build(catalog, State != null ? State.SaveData : saveService.Load(), StartNewGame);
                 return;
             }
 
@@ -163,7 +181,7 @@ namespace IdleOnLike.Core
             }
 
             VillageView.Create(this);
-            VillageHudScreen.Build(this, TravelToForest, DeleteSaveAndReturnToCharacterSelect);
+            VillageHudScreen.Build(this, TravelToForest, ReturnToCharacterSelect, DeleteSaveAndReturnToCharacterSelect);
             ShowPendingOfflineGainsIfAny();
         }
 

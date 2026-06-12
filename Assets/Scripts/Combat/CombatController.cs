@@ -15,6 +15,8 @@ namespace IdleOnLike.Combat
         private GameRuntime runtime;
         private CombatService combatService;
         private CombatView combatView;
+        private bool isAutoMode = true;
+        private float nextManualActionTime;
 
         public static CombatController Create(GameRuntime runtime)
         {
@@ -29,7 +31,7 @@ namespace IdleOnLike.Combat
             runtime = gameRuntime;
             combatService = new CombatService(runtime.State, runtime.InventoryService, runtime.EquipmentService, runtime.QuestService);
             combatView = CombatView.Create(runtime, combatService);
-            CombatHudScreen.Build(runtime, combatService, runtime.ReturnToVillage, () => combatView.IsPlayerNearTree(combatService.PlayerPosition));
+            CombatHudScreen.Build(runtime, combatService, runtime.ReturnToVillage, () => combatView.IsPlayerNearTree(combatService.PlayerPosition), () => isAutoMode, ToggleAutoMode, CanManualAction, PerformManualAction);
             combatService.EnemyDefeated += OnEnemyDefeated;
             combatService.SpawnInitialEnemies(EnemyCount);
             StartCoroutine(CombatLoop());
@@ -42,9 +44,58 @@ namespace IdleOnLike.Combat
                 return;
             }
 
+            if (!isAutoMode && Input.GetKeyDown(KeyCode.Space))
+            {
+                combatService.Jump();
+            }
+
+            if (Input.GetKeyDown(KeyCode.J) && !isAutoMode)
+            {
+                PerformManualAction();
+            }
+
             var fighting = runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString();
-            combatService.Tick(Time.deltaTime, Time.time, fighting);
-            runtime.GatheringService.Tick(Time.deltaTime, combatView.IsPlayerNearTree(combatService.PlayerPosition));
+            if (!isAutoMode)
+            {
+                combatService.MovePlayerManual(Input.GetAxisRaw("Horizontal"), Time.deltaTime);
+            }
+
+            combatService.Tick(Time.deltaTime, Time.time, fighting, isAutoMode);
+            runtime.GatheringService.Tick(isAutoMode ? Time.deltaTime : 0f, isAutoMode && combatView.IsPlayerNearTree(combatService.PlayerPosition));
+        }
+
+        private void ToggleAutoMode()
+        {
+            isAutoMode = !isAutoMode;
+        }
+
+        private void PerformManualAction()
+        {
+            if (!CanManualAction())
+            {
+                return;
+            }
+
+            if (runtime.GatheringService.IsGathering)
+            {
+                runtime.GatheringService.GatherOnce(combatView.IsPlayerNearTree(combatService.PlayerPosition));
+                nextManualActionTime = Time.time + 2f;
+                return;
+            }
+
+            if (combatService.AttackCurrentTarget())
+            {
+                nextManualActionTime = Time.time + AttackSeconds;
+            }
+            else
+            {
+                nextManualActionTime = Time.time + AttackSeconds;
+            }
+        }
+
+        private bool CanManualAction()
+        {
+            return !isAutoMode && Time.time >= nextManualActionTime;
         }
 
         private IEnumerator CombatLoop()
@@ -52,7 +103,7 @@ namespace IdleOnLike.Combat
             while (enabled)
             {
                 yield return new WaitForSeconds(AttackSeconds);
-                if (runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString())
+                if (isAutoMode && runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString())
                 {
                     combatService.AttackCurrentTarget();
                 }

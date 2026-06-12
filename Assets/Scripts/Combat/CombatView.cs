@@ -75,7 +75,10 @@ namespace IdleOnLike.Combat
         {
             if (playerTransform != null)
             {
-                playerTransform.position = combatService.PlayerPosition;
+                var jumpOffset = combatService.IsJumping
+                    ? Mathf.Sin(combatService.JumpProgress * Mathf.PI) * 1.12f
+                    : 0f;
+                playerTransform.position = combatService.PlayerPosition + Vector3.up * jumpOffset;
             }
 
             foreach (var pair in enemyViews)

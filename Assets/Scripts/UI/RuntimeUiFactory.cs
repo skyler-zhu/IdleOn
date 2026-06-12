@@ -71,6 +71,8 @@ namespace IdleOnLike.UI
             colors.pressedColor = color * 0.85f;
             colors.selectedColor = color;
             button.colors = colors;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(ClearSelectedUi);
 
             var labelText = CreateText(buttonObject.transform, "Label", label, 22, TextAnchor.MiddleCenter, Color.white);
             Stretch(labelText.rectTransform, Vector2.zero, Vector2.zero);
@@ -103,6 +105,14 @@ namespace IdleOnLike.UI
             var eventSystemObject = new GameObject("EventSystem");
             eventSystemObject.AddComponent<EventSystem>();
             eventSystemObject.AddComponent<StandaloneInputModule>();
+        }
+
+        private static void ClearSelectedUi()
+        {
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.SetSelectedGameObject(null);
+            }
         }
 
         private static Font GetRuntimeFont()
