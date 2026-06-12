@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4bfc215ad2e2614f8ee4bfe74b5bdbc, type: 3}
+  m_Name: Enemy_Slime
+  m_EditorClassIdentifier: 
+  id: slime
+  displayName: Slime
+  description: A bouncy early-game enemy with slightly more health than a mushroom.
+  idleSprite: {fileID: 21300000, guid: 3c232c4a2377f424e85e758bacc9fe18, type: 3}
+  hitSprite: {fileID: 21300000, guid: 3c232c4a2377f424e85e758bacc9fe18, type: 3}
+  deathSprite: {fileID: 21300000, guid: 3c232c4a2377f424e85e758bacc9fe18, type: 3}
+  animatorController: {fileID: 0}
+  enemyPrefab: {fileID: 0}
+  maxHp: 28
+  attackDamage: 3
+  attackInterval: 1.7
+  experienceReward: 12
+  minCoins: 2
+  maxCoins: 4
+  lootTable:
+  - item: {fileID: 11400000, guid: 6a9e4c66742ff5144bb68597195b6dd0, type: 2}
+    dropChance: 0.5
+    minQuantity: 1
+    maxQuantity: 1
+  - item: {fileID: 11400000, guid: 8e46aabfb31e4854ca2149fd3ad4a0d8, type: 2}
+    dropChance: 0.5
+    minQuantity: 1
+    maxQuantity: 1

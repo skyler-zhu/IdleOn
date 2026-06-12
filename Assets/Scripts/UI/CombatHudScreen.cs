@@ -1,0 +1,121 @@
+using System;
+using System.Collections.Generic;
+using IdleOnLike.Combat;
+using IdleOnLike.Core;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace IdleOnLike.UI
+{
+    public static class CombatHudScreen
+    {
+        private const int MaxLogLines = 8;
+
+        public static void Build(GameRuntime runtime, CombatService combatService, Action onReturnVillageRequested)
+        {
+            var state = runtime.State;
+            var inventoryService = runtime.InventoryService;
+            var equipmentService = runtime.EquipmentService;
+            var logLines = new List<string>();
+            var canvas = RuntimeUiFactory.CreateCanvas("Combat HUD");
+            var lifetime = canvas.GetComponent<RuntimeUiLifetime>();
+
+            var topBar = RuntimeUiFactory.CreatePanel(
+                canvas.transform,
+                "Top Bar",
+                new Vector2(0f, 0.88f),
+                Vector2.one,
+                Vector2.zero,
+                Vector2.zero,
+                new Color(0.08f, 0.09f, 0.11f, 0.92f));
+
+            var status = RuntimeUiFactory.CreateText(topBar, "Status", string.Empty, 22, TextAnchor.MiddleLeft, Color.white);
+            RuntimeUiFactory.SetRect(status.rectTransform, new Vector2(0.03f, 0f), new Vector2(0.62f, 1f), Vector2.zero, Vector2.zero);
+
+            var inventoryPanel = new InventoryEquipmentPanel(runtime, canvas.transform);
+            _ = new QuestTrackerPanel(runtime, canvas.transform, false);
+
+            var inventoryButton = RuntimeUiFactory.CreateButton(topBar, "Inventory Button", "Inventory", new Color(0.26f, 0.30f, 0.46f, 1f));
+            RuntimeUiFactory.SetRect(inventoryButton.GetComponent<RectTransform>(), new Vector2(0.64f, 0.20f), new Vector2(0.78f, 0.80f), Vector2.zero, Vector2.zero);
+            inventoryButton.onClick.AddListener(inventoryPanel.Toggle);
+
+            var returnButton = RuntimeUiFactory.CreateButton(topBar, "Return Village Button", "Return Village", new Color(0.24f, 0.38f, 0.58f, 1f));
+            RuntimeUiFactory.SetRect(returnButton.GetComponent<RectTransform>(), new Vector2(0.80f, 0.20f), new Vector2(0.97f, 0.80f), Vector2.zero, Vector2.zero);
+            returnButton.onClick.AddListener(() => onReturnVillageRequested());
+
+            var enemyPanel = RuntimeUiFactory.CreatePanel(
+                canvas.transform,
+                "Enemy Panel",
+                new Vector2(0.28f, 0.50f),
+                new Vector2(0.72f, 0.74f),
+                Vector2.zero,
+                Vector2.zero,
+                new Color(0.16f, 0.14f, 0.12f, 0.88f));
+
+            var enemyText = RuntimeUiFactory.CreateText(enemyPanel, "Enemy Text", string.Empty, 28, TextAnchor.MiddleCenter, Color.white);
+            RuntimeUiFactory.Stretch(enemyText.rectTransform, new Vector2(18f, 18f), new Vector2(-18f, -18f));
+
+            var logPanel = RuntimeUiFactory.CreatePanel(
+                canvas.transform,
+                "Combat Log Panel",
+                new Vector2(0.24f, 0.14f),
+                new Vector2(0.76f, 0.46f),
+                Vector2.zero,
+                Vector2.zero,
+                new Color(0.07f, 0.08f, 0.09f, 0.88f));
+
+            var logText = RuntimeUiFactory.CreateText(logPanel, "Combat Log", string.Empty, 18, TextAnchor.UpperLeft, new Color(0.88f, 0.92f, 0.96f));
+            RuntimeUiFactory.Stretch(logText.rectTransform, new Vector2(18f, 14f), new Vector2(-18f, -14f));
+
+            combatService.Changed += Refresh;
+            combatService.LogAdded += AddLog;
+            inventoryService.Changed += Refresh;
+            equipmentService.Changed += Refresh;
+            lifetime?.Register(() =>
+            {
+                combatService.Changed -= Refresh;
+                combatService.LogAdded -= AddLog;
+                inventoryService.Changed -= Refresh;
+                equipmentService.Changed -= Refresh;
+            });
+
+            Refresh();
+
+            void Refresh()
+            {
+                if (status == null || enemyText == null)
+                {
+                    return;
+                }
+
+                var character = state.Character;
+                var characterName = character != null ? character.DisplayName : state.SaveData.characterName;
+                status.text = $"{characterName}    Lv. {state.SaveData.level}    XP: {state.SaveData.experience}/{combatService.ExperienceRequired}    Coins: {state.SaveData.coins}    DMG: {combatService.PlayerDamage}";
+
+                if (combatService.CurrentEnemy == null)
+                {
+                    enemyText.text = "Looking for enemies...";
+                    return;
+                }
+
+                enemyText.text = $"{combatService.CurrentEnemy.DisplayName}\nHP: {combatService.CurrentEnemyHp}/{combatService.CurrentEnemy.MaxHp}";
+            }
+
+            void AddLog(string message)
+            {
+                if (logText == null)
+                {
+                    return;
+                }
+
+                logLines.Insert(0, message);
+                if (logLines.Count > MaxLogLines)
+                {
+                    logLines.RemoveAt(logLines.Count - 1);
+                }
+
+                logText.text = string.Join("\n", logLines);
+            }
+        }
+    }
+}

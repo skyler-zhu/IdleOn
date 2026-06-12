@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e159c737ca8d88c4faedb8b8f79166a0, type: 3}
+  m_Name: GameCatalog
+  m_EditorClassIdentifier: 
+  defaultCharacter: {fileID: 11400000, guid: 638a0258e8e9c644b83ce13bbacedc3a, type: 2}
+  villageZone: {fileID: 11400000, guid: 24ea7f044b07f994f8349afbd4e34a0b, type: 2}
+  forestZone: {fileID: 11400000, guid: 6cbaee616eb8fb3449c1c5b8aeedf1ff, type: 2}
+  expansionZone: {fileID: 11400000, guid: 6187aef2577925d4c81b2a36d1fa932a, type: 2}
+  playableCharacters:
+  - {fileID: 11400000, guid: 638a0258e8e9c644b83ce13bbacedc3a, type: 2}
+  - {fileID: 11400000, guid: 6dc238d5c3858174e83398b92feaaa36, type: 2}
+  items:
+  - {fileID: 11400000, guid: 6a9e4c66742ff5144bb68597195b6dd0, type: 2}
+  - {fileID: 11400000, guid: 8e46aabfb31e4854ca2149fd3ad4a0d8, type: 2}
+  - {fileID: 11400000, guid: 4e0d5c685a2eb4c48a3439dcfbb9a527, type: 2}
+  enemies:
+  - {fileID: 11400000, guid: d3919784e54e237479418816c448d1fc, type: 2}
+  - {fileID: 11400000, guid: 9b7b0c0f3ad64f3ea979b3e90db6a4b6, type: 2}
+  quests:
+  - {fileID: 11400000, guid: 4d7c7a654156f5747b96aedb6c10e13c, type: 2}
+  skills:
+  - {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}
+  zones:
+  - {fileID: 11400000, guid: 24ea7f044b07f994f8349afbd4e34a0b, type: 2}
+  - {fileID: 11400000, guid: 6cbaee616eb8fb3449c1c5b8aeedf1ff, type: 2}
+  - {fileID: 11400000, guid: 6187aef2577925d4c81b2a36d1fa932a, type: 2}
+  recipes:
+  - {fileID: 11400000, guid: 4fab2781a3ca6744491ac6af587bf8d6, type: 2}

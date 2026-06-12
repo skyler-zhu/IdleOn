@@ -1,0 +1,53 @@
+namespace IdleOnLike.Data
+{
+    public enum CharacterRole
+    {
+        Beginner,
+        Warrior,
+        Archer,
+        Mage
+    }
+
+    public enum ItemType
+    {
+        Material,
+        Consumable,
+        Equipment,
+        Quest,
+        Currency
+    }
+
+    public enum EquipmentSlot
+    {
+        None,
+        Weapon,
+        Helmet,
+        Chest,
+        Boots,
+        Pendant
+    }
+
+    public enum SkillType
+    {
+        Combat,
+        Chopping,
+        Mining,
+        Smithing
+    }
+
+    public enum QuestObjectiveType
+    {
+        KillEnemy,
+        CollectItem,
+        GatherResource,
+        CraftItem,
+        ReachLevel
+    }
+
+    public enum ZoneActivity
+    {
+        Fighting,
+        Chopping,
+        Mining
+    }
+}
