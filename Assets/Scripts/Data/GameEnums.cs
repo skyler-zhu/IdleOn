@@ -41,7 +41,9 @@ namespace IdleOnLike.Data
         CollectItem,
         GatherResource,
         CraftItem,
-        ReachLevel
+        ReachLevel,
+        SwitchCharacter,
+        EquipItem
     }
 
     public enum ZoneActivity

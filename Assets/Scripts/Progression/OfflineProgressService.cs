@@ -17,13 +17,15 @@ namespace IdleOnLike.Progression
         private readonly System.Random random = new System.Random();
 
         private readonly PlayerSaveData saveData;
+        private readonly AccountSaveData accountData;
         private readonly GameCatalog catalog;
         private readonly InventoryService inventoryService;
         private readonly QuestService questService;
 
-        public OfflineProgressService(PlayerSaveData saveData, GameCatalog catalog, InventoryService inventoryService, QuestService questService)
+        public OfflineProgressService(PlayerSaveData saveData, AccountSaveData accountData, GameCatalog catalog, InventoryService inventoryService, QuestService questService)
         {
             this.saveData = saveData;
+            this.accountData = accountData;
             this.catalog = catalog;
             this.inventoryService = inventoryService;
             this.questService = questService;
@@ -70,7 +72,7 @@ namespace IdleOnLike.Progression
                 }
 
                 var coins = random.Next(enemy.MinCoins, enemy.MaxCoins + 1);
-                saveData.coins += coins;
+                accountData.coins += coins;
                 result.coins += coins;
                 result.experience += enemy.ExperienceReward;
                 questService.AddProgress(QuestObjectiveType.KillEnemy, enemy.Id, 1);
@@ -101,10 +103,12 @@ namespace IdleOnLike.Progression
 
         private EnemyDefinition PickEnemy(ZoneDefinition zone)
         {
-            var fallbackZone = catalog != null ? catalog.ForestZone : null;
-            var spawns = zone != null && zone.Enemies.Count > 0
-                ? zone.Enemies
-                : fallbackZone != null ? fallbackZone.Enemies : Array.Empty<ZoneEnemySpawn>();
+            if (zone == null && catalog != null)
+            {
+                zone = catalog.ForestZone;
+            }
+
+            var spawns = zone != null ? zone.Enemies : Array.Empty<ZoneEnemySpawn>();
             var totalWeight = 0;
             foreach (var spawn in spawns)
             {
@@ -116,7 +120,7 @@ namespace IdleOnLike.Progression
 
             if (totalWeight <= 0)
             {
-                return catalog != null && catalog.Enemies.Count > 0 ? catalog.Enemies[0] : null;
+                return null;
             }
 
             var roll = random.Next(0, totalWeight);

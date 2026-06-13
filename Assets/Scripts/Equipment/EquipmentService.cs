@@ -19,6 +19,7 @@ namespace IdleOnLike.Equipment
         }
 
         public event Action Changed;
+        public event Action<QuestObjectiveType, string, int> ItemEquipped;
 
         public bool Equip(string itemId)
         {
@@ -53,6 +54,7 @@ namespace IdleOnLike.Equipment
                 slot.itemId = item.Id;
             }
 
+            ItemEquipped?.Invoke(QuestObjectiveType.EquipItem, item.Id, 1);
             Changed?.Invoke();
             return true;
         }

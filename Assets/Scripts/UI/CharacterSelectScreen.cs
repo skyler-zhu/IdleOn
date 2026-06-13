@@ -8,7 +8,7 @@ namespace IdleOnLike.UI
 {
     public static class CharacterSelectScreen
     {
-        public static void Build(GameCatalog catalog, PlayerSaveData saveData, Action<CharacterDefinition> onCharacterSelected)
+        public static void Build(GameCatalog catalog, AccountSaveData saveData, Action<CharacterDefinition> onCharacterSelected)
         {
             saveData?.EnsureCollections();
             var canvas = RuntimeUiFactory.CreateCanvas("Character Select UI");
@@ -66,7 +66,7 @@ namespace IdleOnLike.UI
             }
         }
 
-        private static bool IsCharacterUnlocked(PlayerSaveData saveData, System.Collections.Generic.IReadOnlyList<CharacterDefinition> characters, int index, CharacterDefinition character)
+        private static bool IsCharacterUnlocked(AccountSaveData saveData, System.Collections.Generic.IReadOnlyList<CharacterDefinition> characters, int index, CharacterDefinition character)
         {
             if (character == null)
             {

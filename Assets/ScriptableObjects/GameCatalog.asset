@@ -24,12 +24,18 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8e46aabfb31e4854ca2149fd3ad4a0d8, type: 2}
   - {fileID: 11400000, guid: 4e0d5c685a2eb4c48a3439dcfbb9a527, type: 2}
   - {fileID: 11400000, guid: c7424c49694a4908867066c66de68f88, type: 2}
+  - {fileID: 11400000, guid: dfd5f7a487e3459f81025af988861730, type: 2}
+  - {fileID: 11400000, guid: ea915c80f3504ebbb595d2ce0a8f31bc, type: 2}
   enemies:
   - {fileID: 11400000, guid: d3919784e54e237479418816c448d1fc, type: 2}
   - {fileID: 11400000, guid: 9b7b0c0f3ad64f3ea979b3e90db6a4b6, type: 2}
   quests:
   - {fileID: 11400000, guid: 4d7c7a654156f5747b96aedb6c10e13c, type: 2}
   - {fileID: 11400000, guid: 1503b84ff22243d1b2c82b0468f2298a, type: 2}
+  - {fileID: 11400000, guid: a4dce914f5d2438887f9e927ec793a37, type: 2}
+  - {fileID: 11400000, guid: 62f1c4f0b9e947318f58b5e4ed6f6081, type: 2}
+  - {fileID: 11400000, guid: 9a17c0b8d9c64e54a9a28f15d56f6c40, type: 2}
+  - {fileID: 11400000, guid: 3dca1b2b46be4d97a64a3991324fa0b8, type: 2}
   skills:
   - {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}
   - {fileID: 11400000, guid: dc6e0b00840a44779ccf354ad192170a, type: 2}
@@ -40,3 +46,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b8d05632eb0e49a4b971d04d60898bb8, type: 2}
   recipes:
   - {fileID: 11400000, guid: 4fab2781a3ca6744491ac6af587bf8d6, type: 2}
+  - {fileID: 11400000, guid: 18e6ff35c53249e897fc91367afbb6d4, type: 2}

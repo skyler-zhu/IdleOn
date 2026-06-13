@@ -18,6 +18,7 @@ namespace IdleOnLike.Crafting
 
         public event Action Changed;
         public event Action<string> LogAdded;
+        public event Action<QuestObjectiveType, string, int> ItemCrafted;
 
         public bool CanCraft(string recipeId)
         {
@@ -52,6 +53,7 @@ namespace IdleOnLike.Crafting
             }
 
             inventoryService.AddItem(recipe.Output.item.Id, recipe.Output.quantity);
+            ItemCrafted?.Invoke(QuestObjectiveType.CraftItem, recipe.Output.item.Id, recipe.Output.quantity);
             LogAdded?.Invoke($"Crafted {recipe.Output.item.DisplayName} x{recipe.Output.quantity}.");
             Changed?.Invoke();
             return true;

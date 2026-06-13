@@ -26,5 +26,17 @@ MonoBehaviour:
     weight: 3
   - enemy: {fileID: 11400000, guid: 9b7b0c0f3ad64f3ea979b3e90db6a4b6, type: 2}
     weight: 2
-  resourceNodes: []
+  resourceNodes:
+  - nodeId: tree
+    displayName: Tree
+    skillType: 1
+    icon: {fileID: 21300000, guid: e8d1075a1df33c64baf47b7aab7c3c5a, type: 3}
+    nodePrefab: {fileID: 0}
+    resourceDrops:
+    - item: {fileID: 11400000, guid: 6a9e4c66742ff5144bb68597195b6dd0, type: 2}
+      dropChance: 1
+      minQuantity: 1
+      maxQuantity: 1
+    gatherSeconds: 2
+    skillExperience: 5
   nextZonePreview: {fileID: 11400000, guid: 6187aef2577925d4c81b2a36d1fa932a, type: 2}

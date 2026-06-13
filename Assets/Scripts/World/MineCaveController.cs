@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using IdleOnLike.Core;
+using IdleOnLike.Data;
 using UnityEngine;
 using UnityEngine.UI;
 using UiFactory = IdleOnLike.UI.RuntimeUiFactory;
@@ -14,13 +15,14 @@ namespace IdleOnLike.World
         private const float JumpHeight = 1.12f;
         private const float AttackSeconds = 0.16f;
         private const float ClimbSeconds = 1.25f;
-        private static readonly Vector3 LowerSpawn = new Vector3(-3.2f, -1.15f, 0f);
-        private static readonly Vector3 UpperSpawn = new Vector3(-1.2f, 1.05f, 0f);
+        private static readonly Vector3 LowerSpawn = new Vector3(5.35f, -1.35f, 0f);
+        private static readonly Vector3 UpperSpawn = new Vector3(-1.2f, 1.15f, 0f);
         private static readonly Vector3 RopePosition = new Vector3(0.2f, -0.05f, 0f);
         private static readonly Vector3 LowerRopePoint = new Vector3(RopePosition.x, LowerSpawn.y, 0f);
         private static readonly Vector3 UpperRopePoint = new Vector3(RopePosition.x, UpperSpawn.y, 0f);
-        private static readonly Vector3 LowerRockPosition = new Vector3(2.75f, -1.05f, 0f);
-        private static readonly Vector3 UpperRockPosition = new Vector3(3.15f, 1.15f, 0f);
+        private static readonly Vector3 VillagePortalPosition = new Vector3(6.15f, LowerSpawn.y + 0.13f, 0f);
+        private static readonly Vector3 LowerRockPosition = new Vector3(-5.35f, -1.25f, 0f);
+        private static readonly Vector3 UpperRockPosition = new Vector3(-5.75f, 1.25f, 0f);
 
         private readonly List<string> logLines = new List<string>();
         private GameRuntime runtime;
@@ -31,7 +33,7 @@ namespace IdleOnLike.World
         private Text logText;
         private Button autoButton;
         private Button actionButton;
-        private bool isAutoMode = true;
+        private bool isAutoMode;
         private bool upperFloor;
         private float nextManualMineTime;
         private float jumpRemainingSeconds;
@@ -53,11 +55,11 @@ namespace IdleOnLike.World
         private void Initialize(GameRuntime gameRuntime)
         {
             runtime = gameRuntime;
+            ConfigureCamera();
             BuildWorld();
             BuildHud();
             runtime.GatheringService.LogAdded += AddLog;
             runtime.GatheringService.Changed += RefreshHud;
-            runtime.GatheringService.StartGathering("rock", IsNearRock());
             RefreshHud();
         }
 
@@ -72,6 +74,12 @@ namespace IdleOnLike.World
             {
                 UpdateClimb();
                 RefreshHud();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.F) && IsNearVillagePortal())
+            {
+                runtime.ReturnToVillage();
                 return;
             }
 
@@ -106,6 +114,11 @@ namespace IdleOnLike.World
             }
 
             UpdateActionVisuals();
+            if (isAutoMode && IsNearRock() && !runtime.GatheringService.IsMining)
+            {
+                runtime.GatheringService.StartGathering("rock", true);
+            }
+
             runtime.GatheringService.Tick(isAutoMode ? Time.deltaTime : 0f, isAutoMode && IsNearRock());
             RefreshHud();
         }
@@ -118,17 +131,24 @@ namespace IdleOnLike.World
             }
 
             var position = playerTransform.position;
-            position.x = Mathf.Clamp(position.x + horizontal * MoveSpeed * Time.deltaTime, -3.8f, 3.6f);
+            position.x = Mathf.Clamp(position.x + horizontal * MoveSpeed * Time.deltaTime, -6.6f, 6.4f);
             playerTransform.position = position;
             playerTransform.localScale = new Vector3(horizontal < 0f ? -1f : 1f, 1f, 1f);
         }
 
         private void MoveAuto()
         {
+            if (!runtime.GatheringService.IsMining)
+            {
+                return;
+            }
+
             var target = upperFloor ? UpperRockPosition : LowerRockPosition;
             var position = playerTransform.position;
+            var previousX = position.x;
             position.x = Vector3.MoveTowards(position, target, MoveSpeed * Time.deltaTime).x;
             playerTransform.position = position;
+            FaceFromDelta(position.x - previousX);
         }
 
         private void StartClimb()
@@ -178,6 +198,18 @@ namespace IdleOnLike.World
                 return;
             }
 
+            if (!runtime.GatheringService.IsMining)
+            {
+                if (!IsNearRock())
+                {
+                    runtime.State.SaveData.currentActivity = ZoneActivity.Fighting.ToString();
+                    runtime.Save();
+                    return;
+                }
+
+                runtime.GatheringService.StartGathering("rock", true);
+            }
+
             runtime.GatheringService.GatherOnce(IsNearRock());
             nextManualMineTime = Time.time + ManualMineSeconds;
         }
@@ -185,6 +217,11 @@ namespace IdleOnLike.World
         private bool IsNearRope()
         {
             return Mathf.Abs(playerTransform.position.x - RopePosition.x) <= 0.75f;
+        }
+
+        private bool IsNearVillagePortal()
+        {
+            return !upperFloor && Vector3.Distance(playerTransform.position, VillagePortalPosition) <= 1.25f;
         }
 
         private bool IsNearRock()
@@ -207,12 +244,13 @@ namespace IdleOnLike.World
 
         private void BuildWorld()
         {
-            CreateSprite("Cave Backdrop", new Vector3(0f, 0f, 0.5f), new Vector3(9f, 5.5f, 1f), new Color32(39, 42, 52, 255), -20);
-            CreateSprite("Lower Platform", new Vector3(0f, -1.55f, 0f), new Vector3(8.2f, 0.28f, 1f), new Color32(86, 80, 78, 255), -8);
-            CreateSprite("Upper Platform", new Vector3(1.1f, 0.65f, 0f), new Vector3(5.4f, 0.24f, 1f), new Color32(93, 86, 84, 255), -8);
-            CreateSprite("Rope", RopePosition, new Vector3(0.12f, 2.5f, 1f), new Color32(176, 139, 82, 255), 0);
-            CreateSprite("Lower Rock", LowerRockPosition, new Vector3(0.78f, 0.62f, 1f), new Color32(113, 128, 151, 255), 1);
-            CreateSprite("Upper Rock", UpperRockPosition, new Vector3(0.62f, 0.54f, 1f), new Color32(121, 138, 166, 255), 1);
+            CreateSprite("Cave Backdrop", new Vector3(0f, 0f, 0.5f), new Vector3(16f, 6.6f, 1f), new Color32(39, 42, 52, 255), -20);
+            CreateSprite("Lower Platform", new Vector3(0f, -1.85f, 0f), new Vector3(14.2f, 0.28f, 1f), new Color32(86, 80, 78, 255), -8);
+            CreateSprite("Upper Platform", new Vector3(1.1f, 0.75f, 0f), new Vector3(12.2f, 0.24f, 1f), new Color32(93, 86, 84, 255), -8);
+            CreateSprite("Rope", RopePosition, new Vector3(0.12f, 2.75f, 1f), new Color32(176, 139, 82, 255), 0);
+            CreatePortal();
+            CreateResourceSprite("Lower Rock", "rock", LowerRockPosition, new Vector3(0.78f, 0.62f, 1f), new Color32(113, 128, 151, 255), 1);
+            CreateResourceSprite("Upper Rock", "rock", UpperRockPosition, new Vector3(0.62f, 0.54f, 1f), new Color32(121, 138, 166, 255), 1);
 
             var player = CreateSprite("Mine Player", LowerSpawn, new Vector3(1f, 1f, 1f), new Color32(82, 168, 255, 255), 5);
             var renderer = player.GetComponent<SpriteRenderer>();
@@ -235,7 +273,7 @@ namespace IdleOnLike.World
             UiFactory.SetRect(autoButton.GetComponent<RectTransform>(), new Vector2(0.45f, 0.20f), new Vector2(0.56f, 0.80f), Vector2.zero, Vector2.zero);
             autoButton.onClick.AddListener(ToggleAutoMode);
 
-            actionButton = UiFactory.CreateButton(topBar, "Mine Button", "Mine (J)", new Color(0.48f, 0.34f, 0.18f, 1f));
+            actionButton = UiFactory.CreateButton(topBar, "Action Button", "Action (J)", new Color(0.48f, 0.34f, 0.18f, 1f));
             UiFactory.SetRect(actionButton.GetComponent<RectTransform>(), new Vector2(0.57f, 0.20f), new Vector2(0.68f, 0.80f), Vector2.zero, Vector2.zero);
             actionButton.onClick.AddListener(() =>
             {
@@ -245,12 +283,8 @@ namespace IdleOnLike.World
 
             var inventoryPanel = new IdleOnLike.UI.InventoryEquipmentPanel(runtime, canvas.transform);
             var inventoryButton = UiFactory.CreateButton(topBar, "Inventory Button", "Inventory", new Color(0.26f, 0.30f, 0.46f, 1f));
-            UiFactory.SetRect(inventoryButton.GetComponent<RectTransform>(), new Vector2(0.69f, 0.20f), new Vector2(0.80f, 0.80f), Vector2.zero, Vector2.zero);
+            UiFactory.SetRect(inventoryButton.GetComponent<RectTransform>(), new Vector2(0.69f, 0.20f), new Vector2(0.83f, 0.80f), Vector2.zero, Vector2.zero);
             inventoryButton.onClick.AddListener(inventoryPanel.Toggle);
-
-            var returnButton = UiFactory.CreateButton(topBar, "Return Village Button", "Village", new Color(0.24f, 0.38f, 0.58f, 1f));
-            UiFactory.SetRect(returnButton.GetComponent<RectTransform>(), new Vector2(0.82f, 0.20f), new Vector2(0.97f, 0.80f), Vector2.zero, Vector2.zero);
-            returnButton.onClick.AddListener(() => runtime.ReturnToVillage());
 
             promptText = UiFactory.CreateText(canvas.transform, "Rope Prompt", string.Empty, 22, TextAnchor.MiddleCenter, Color.white);
             UiFactory.SetRect(promptText.rectTransform, new Vector2(0.40f, 0.64f), new Vector2(0.60f, 0.72f), Vector2.zero, Vector2.zero);
@@ -269,10 +303,11 @@ namespace IdleOnLike.World
 
             var ore = runtime.InventoryService.GetQuantity("ore");
             var mode = isAutoMode ? "Auto" : "Manual";
+            var activity = runtime.State.SaveData.currentActivity;
             var floor = isClimbing ? "Climbing" : upperFloor ? "Upper" : "Lower";
-            var nearRock = IsNearRock() || isClimbing ? string.Empty : "    Move near rock";
-            statusText.text = $"{mode} Mining    {floor} Floor    Ore: {ore}{nearRock}";
-            promptText.text = isClimbing ? "Climbing..." : IsNearRope() ? "Press F" : string.Empty;
+            var nearRock = activity == ZoneActivity.Mining.ToString() && !IsNearRock() && !isClimbing ? "    Move near rock" : string.Empty;
+            statusText.text = $"{mode}    Last: {activity}    {floor} Floor    Ore: {ore}{nearRock}";
+            promptText.text = isClimbing ? "Climbing..." : IsNearVillagePortal() ? "Press F: Village" : IsNearRope() ? "Press F" : string.Empty;
             autoButton.GetComponentInChildren<Text>().text = isAutoMode ? "Auto" : "Manual";
             actionButton.interactable = !isClimbing && !isAutoMode && Time.time >= nextManualMineTime;
         }
@@ -304,6 +339,16 @@ namespace IdleOnLike.World
             {
                 attackFlash.SetActive(true);
             }
+        }
+
+        private void FaceFromDelta(float deltaX)
+        {
+            if (Mathf.Abs(deltaX) <= 0.01f)
+            {
+                return;
+            }
+
+            playerTransform.localScale = new Vector3(deltaX < 0f ? -1f : 1f, 1f, 1f);
         }
 
         private void UpdateActionVisuals()
@@ -367,12 +412,82 @@ namespace IdleOnLike.World
             return instance;
         }
 
+        private GameObject CreateResourceSprite(string name, string nodeId, Vector3 position, Vector3 scale, Color32 fallbackColor, int sortingOrder)
+        {
+            var instance = CreateSprite(name, position, scale, fallbackColor, sortingOrder);
+            var sprite = GetResourceNodeSprite(nodeId);
+            if (sprite != null)
+            {
+                instance.GetComponent<SpriteRenderer>().sprite = sprite;
+            }
+
+            return instance;
+        }
+
+        private Sprite GetResourceNodeSprite(string nodeId)
+        {
+            var zone = runtime.State.CurrentZone;
+            if (zone == null)
+            {
+                return null;
+            }
+
+            foreach (var node in zone.ResourceNodes)
+            {
+                if (node != null && node.nodeId == nodeId)
+                {
+                    return node.icon;
+                }
+            }
+
+            return null;
+        }
+
+        private void CreatePortal()
+        {
+            var ring = CreateSprite("Village Portal", VillagePortalPosition, new Vector3(0.72f, 1.15f, 1f), new Color32(86, 139, 212, 255), 3);
+            ring.transform.SetParent(transform, false);
+
+            var core = CreateSprite("Village Portal Core", VillagePortalPosition, new Vector3(0.46f, 0.88f, 1f), new Color32(45, 54, 78, 255), 4);
+            core.transform.SetParent(transform, false);
+
+            CreateWorldLabel("Village Portal Label", "Village\nPress F", VillagePortalPosition + new Vector3(0f, 0.98f, 0f), 30, Color.white);
+        }
+
         private static Sprite CreateSolidSprite(Color32 color)
         {
             var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
             texture.SetPixel(0, 0, color);
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        }
+
+        private static void ConfigureCamera()
+        {
+            var camera = Camera.main;
+            if (camera == null)
+            {
+                return;
+            }
+
+            camera.orthographic = true;
+            camera.orthographicSize = 3.75f;
+            camera.transform.position = new Vector3(0f, -0.25f, -10f);
+        }
+
+        private void CreateWorldLabel(string name, string text, Vector3 position, int fontSize, Color color)
+        {
+            var labelObject = new GameObject(name);
+            labelObject.transform.SetParent(transform, false);
+            labelObject.transform.position = position;
+            var label = labelObject.AddComponent<TextMesh>();
+            label.text = text;
+            label.fontSize = fontSize;
+            label.characterSize = 0.035f;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.color = color;
+            label.GetComponent<MeshRenderer>().sortingOrder = 8;
         }
 
         private void OnDestroy()

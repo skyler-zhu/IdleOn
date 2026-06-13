@@ -15,7 +15,7 @@ namespace IdleOnLike.Combat
         private GameRuntime runtime;
         private CombatService combatService;
         private CombatView combatView;
-        private bool isAutoMode = true;
+        private bool isAutoMode;
         private float nextManualActionTime;
 
         public static CombatController Create(GameRuntime runtime)
@@ -31,7 +31,7 @@ namespace IdleOnLike.Combat
             runtime = gameRuntime;
             combatService = new CombatService(runtime.State, runtime.InventoryService, runtime.EquipmentService, runtime.QuestService);
             combatView = CombatView.Create(runtime, combatService);
-            CombatHudScreen.Build(runtime, combatService, runtime.ReturnToVillage, () => combatView.IsPlayerNearTree(combatService.PlayerPosition), () => isAutoMode, ToggleAutoMode, CanManualAction, PerformManualAction);
+            CombatHudScreen.Build(runtime, combatService, () => combatView.IsPlayerNearTree(combatService.PlayerPosition), () => isAutoMode, ToggleAutoMode, CanManualAction, PerformManualAction);
             combatService.EnemyDefeated += OnEnemyDefeated;
             combatService.SpawnInitialEnemies(EnemyCount);
             StartCoroutine(CombatLoop());
@@ -49,19 +49,32 @@ namespace IdleOnLike.Combat
                 combatService.Jump();
             }
 
+            if (Input.GetKeyDown(KeyCode.F) && combatService.IsNearRope)
+            {
+                combatService.UseRope();
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.F) && combatView.IsPlayerNearVillagePortal(combatService.PlayerPosition))
+            {
+                runtime.ReturnToVillage();
+                return;
+            }
+
             if (Input.GetKeyDown(KeyCode.J) && !isAutoMode)
             {
                 PerformManualAction();
             }
 
             var fighting = runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString();
+            var chopping = runtime.State.SaveData.currentActivity == ZoneActivity.Chopping.ToString();
             if (!isAutoMode)
             {
                 combatService.MovePlayerManual(Input.GetAxisRaw("Horizontal"), Time.deltaTime);
             }
 
-            combatService.Tick(Time.deltaTime, Time.time, fighting, isAutoMode);
-            runtime.GatheringService.Tick(isAutoMode ? Time.deltaTime : 0f, isAutoMode && combatView.IsPlayerNearTree(combatService.PlayerPosition));
+            combatService.Tick(Time.deltaTime, Time.time, fighting, chopping, isAutoMode);
+            runtime.GatheringService.Tick(isAutoMode && chopping ? Time.deltaTime : 0f, isAutoMode && chopping && combatView.IsPlayerNearTree(combatService.PlayerPosition));
         }
 
         private void ToggleAutoMode()
@@ -76,8 +89,13 @@ namespace IdleOnLike.Combat
                 return;
             }
 
-            if (runtime.GatheringService.IsGathering)
+            if (combatView.IsPlayerNearTree(combatService.PlayerPosition))
             {
+                if (!runtime.GatheringService.IsChopping)
+                {
+                    runtime.GatheringService.StartGathering("tree", true);
+                }
+
                 runtime.GatheringService.GatherOnce(combatView.IsPlayerNearTree(combatService.PlayerPosition));
                 nextManualActionTime = Time.time + 2f;
                 return;

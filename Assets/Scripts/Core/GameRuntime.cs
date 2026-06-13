@@ -8,6 +8,7 @@ using IdleOnLike.Progression;
 using IdleOnLike.Quests;
 using IdleOnLike.Save;
 using IdleOnLike.Skills;
+using IdleOnLike.Shop;
 using IdleOnLike.UI;
 using IdleOnLike.World;
 using UnityEngine;
@@ -27,8 +28,10 @@ namespace IdleOnLike.Core
         private QuestService questService;
         private GatheringService gatheringService;
         private CraftingService craftingService;
+        private ShopService shopService;
         private OfflineProgressService offlineProgressService;
         private OfflineGainsResult pendingOfflineGains;
+        private WorldMapPanel worldMapPanel;
 
         public GameState State { get; private set; }
         public GameCatalog Catalog => catalog;
@@ -38,7 +41,16 @@ namespace IdleOnLike.Core
         public QuestService QuestService => questService;
         public GatheringService GatheringService => gatheringService;
         public CraftingService CraftingService => craftingService;
+        public ShopService ShopService => shopService;
         public OfflineGainsResult PendingOfflineGains => pendingOfflineGains;
+
+        private void Update()
+        {
+            if (State != null && worldMapPanel != null && Input.GetKeyDown(KeyCode.M))
+            {
+                worldMapPanel.Toggle();
+            }
+        }
 
         public void Initialize(GameCatalog gameCatalog)
         {
@@ -65,6 +77,8 @@ namespace IdleOnLike.Core
 
             State = new GameState(catalog, saveData);
             CreateRuntimeServices();
+            EnsureWorldMap();
+            CompleteSwitchCharacterQuestsForAllCharacters(State.SaveData.characterId);
             TryApplyStartupOfflineGains();
             var zone = State.CurrentZone != null ? State.CurrentZone : catalog.VillageZone;
             sceneLoader.LoadZone(zone);
@@ -78,22 +92,28 @@ namespace IdleOnLike.Core
                 return;
             }
 
-            var saveData = PlayerSaveData.CreateNew(character, catalog.VillageZone);
+            AccountSaveData accountData;
             if (State != null)
             {
-                State.SaveData.EnsureCollections();
-                foreach (var unlockedCharacterId in State.SaveData.unlockedCharacterIds)
-                {
-                    if (!saveData.unlockedCharacterIds.Contains(unlockedCharacterId))
-                    {
-                        saveData.unlockedCharacterIds.Add(unlockedCharacterId);
-                    }
-                }
+                accountData = State.AccountData;
+            }
+            else
+            {
+                accountData = saveService.Load();
             }
 
-            State = new GameState(catalog, saveData);
+            if (accountData == null)
+            {
+                accountData = AccountSaveData.FromLegacy(PlayerSaveData.CreateNew(character, catalog.VillageZone));
+            }
+
+            accountData.GetOrCreateCharacter(character, catalog.VillageZone);
+            State = new GameState(catalog, accountData);
             CreateRuntimeServices();
-            saveService.Save(saveData);
+            EnsureWorldMap();
+            CompleteSwitchCharacterQuestsForAllCharacters(character.Id);
+            pendingOfflineGains = CalculateOfflineForActiveCharacter();
+            saveService.Save(accountData);
             sceneLoader.LoadZone(State.CurrentZone != null ? State.CurrentZone : catalog.VillageZone);
         }
 
@@ -101,7 +121,7 @@ namespace IdleOnLike.Core
         {
             if (State != null)
             {
-                saveService.Save(State.SaveData);
+                saveService.Save(State.AccountData);
             }
         }
 
@@ -119,7 +139,7 @@ namespace IdleOnLike.Core
         {
             if (State != null)
             {
-                State.SaveData.currentActivity = ZoneActivity.Mining.ToString();
+                State.SaveData.currentActivity = ZoneActivity.Fighting.ToString();
             }
 
             TravelToZone(catalog.FindZone("mine_cave"));
@@ -152,8 +172,10 @@ namespace IdleOnLike.Core
             questService = null;
             gatheringService = null;
             craftingService = null;
+            shopService = null;
             offlineProgressService = null;
             pendingOfflineGains = null;
+            worldMapPanel?.Hide();
             sceneLoader.LoadScene("CharacterSelect");
         }
 
@@ -177,9 +199,10 @@ namespace IdleOnLike.Core
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            worldMapPanel?.Hide();
             if (scene.name == "CharacterSelect")
             {
-                CharacterSelectScreen.Build(catalog, State != null ? State.SaveData : saveService.Load(), StartNewGame);
+                CharacterSelectScreen.Build(catalog, State != null ? State.AccountData : saveService.Load(), StartNewGame);
                 return;
             }
 
@@ -214,31 +237,116 @@ namespace IdleOnLike.Core
             questService = new QuestService(State, inventoryService);
             gatheringService = new GatheringService(State.SaveData, inventoryService, questService);
             craftingService = new CraftingService(State, inventoryService);
-            offlineProgressService = new OfflineProgressService(State.SaveData, catalog, inventoryService, questService);
+            shopService = new ShopService(State, inventoryService);
+            offlineProgressService = new OfflineProgressService(State.SaveData, State.AccountData, catalog, inventoryService, questService);
             inventoryService.ItemAdded += questService.AddProgress;
+            equipmentService.ItemEquipped += questService.AddProgress;
+            craftingService.ItemCrafted += questService.AddProgress;
             inventoryService.Changed += Save;
             equipmentService.Changed += Save;
             questService.Changed += Save;
             gatheringService.Changed += Save;
             craftingService.Changed += Save;
+            shopService.Changed += Save;
+        }
+
+        private void EnsureWorldMap()
+        {
+            if (worldMapPanel == null)
+            {
+                worldMapPanel = new WorldMapPanel(this);
+            }
         }
 
         private void TryApplyStartupOfflineGains()
         {
-            if (!DateTime.TryParse(State.SaveData.lastSavedUtc, out var lastSavedUtc))
-            {
-                State.SaveData.lastSavedUtc = DateTime.UtcNow.ToString("O");
-                return;
-            }
-
-            var elapsed = DateTime.UtcNow - lastSavedUtc.ToUniversalTime();
-            if (elapsed < TimeSpan.FromMinutes(1))
-            {
-                return;
-            }
-
-            pendingOfflineGains = offlineProgressService.CalculateOfflineGains(elapsed);
+            pendingOfflineGains = CalculateOfflineForAllCharacters(State.AccountData.activeCharacterId);
             Save();
+        }
+
+        private OfflineGainsResult CalculateOfflineForActiveCharacter()
+        {
+            if (State == null)
+            {
+                return null;
+            }
+
+            return CalculateOfflineForAllCharacters(State.AccountData.activeCharacterId);
+        }
+
+        private OfflineGainsResult CalculateOfflineForAllCharacters(string resultCharacterId)
+        {
+            if (State == null || State.AccountData == null)
+            {
+                return null;
+            }
+
+            var previousActiveId = State.AccountData.activeCharacterId;
+            OfflineGainsResult selectedResult = null;
+            foreach (var characterSave in State.AccountData.characters)
+            {
+                if (characterSave == null)
+                {
+                    continue;
+                }
+
+                if (!DateTime.TryParse(characterSave.lastSavedUtc, out var lastSavedUtc))
+                {
+                    characterSave.lastSavedUtc = DateTime.UtcNow.ToString("O");
+                    continue;
+                }
+
+                var elapsed = DateTime.UtcNow - lastSavedUtc.ToUniversalTime();
+                if (elapsed < TimeSpan.FromMinutes(1))
+                {
+                    continue;
+                }
+
+                State.AccountData.activeCharacterId = characterSave.characterId;
+                var tempState = new GameState(catalog, State.AccountData);
+                var tempInventory = new InventoryService(tempState);
+                var tempQuest = new QuestService(tempState, tempInventory);
+                tempInventory.ItemAdded += tempQuest.AddProgress;
+                var tempOffline = new OfflineProgressService(characterSave, State.AccountData, catalog, tempInventory, tempQuest);
+                var result = tempOffline.CalculateOfflineGains(elapsed);
+                tempInventory.ItemAdded -= tempQuest.AddProgress;
+                characterSave.lastSavedUtc = DateTime.UtcNow.ToString("O");
+                if (characterSave.characterId == resultCharacterId)
+                {
+                    selectedResult = result;
+                }
+            }
+
+            State.AccountData.activeCharacterId = previousActiveId;
+            return selectedResult;
+        }
+
+        private void CompleteSwitchCharacterQuestsForAllCharacters(string switchedToCharacterId)
+        {
+            if (State == null || State.AccountData == null || string.IsNullOrEmpty(switchedToCharacterId))
+            {
+                return;
+            }
+
+            var previousActiveId = State.AccountData.activeCharacterId;
+            foreach (var characterSave in State.AccountData.characters)
+            {
+                if (characterSave == null)
+                {
+                    continue;
+                }
+
+                State.AccountData.activeCharacterId = characterSave.characterId;
+                var tempState = new GameState(catalog, State.AccountData);
+                var tempInventory = new InventoryService(tempState);
+                var tempQuest = new QuestService(tempState, tempInventory);
+                tempInventory.ItemAdded += tempQuest.AddProgress;
+                tempQuest.CompleteAutoCompletableSwitchCharacterQuests(switchedToCharacterId);
+                tempInventory.ItemAdded -= tempQuest.AddProgress;
+            }
+
+            State.AccountData.activeCharacterId = previousActiveId;
+            questService.CompleteAutoCompletableSwitchCharacterQuests(switchedToCharacterId);
         }
 
         private void ShowPendingOfflineGainsIfAny()

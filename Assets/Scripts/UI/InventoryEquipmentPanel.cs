@@ -86,19 +86,20 @@ namespace IdleOnLike.UI
 
         private void BuildInventory()
         {
-            var saveData = runtime.State.SaveData;
-            saveData.EnsureCollections();
+            var accountData = runtime.State.AccountData;
+            accountData.EnsureCollections();
+            var inventory = accountData.sharedInventory;
 
-            if (saveData.inventory.Count == 0)
+            if (inventory.Count == 0)
             {
                 var empty = RuntimeUiFactory.CreateText(inventoryList, "Empty Inventory", "No items yet. Go Forest and fight for drops.", 18, TextAnchor.UpperLeft, new Color(0.78f, 0.82f, 0.88f));
                 RuntimeUiFactory.Stretch(empty.rectTransform, new Vector2(18f, 18f), new Vector2(-18f, -18f));
                 return;
             }
 
-            for (var i = 0; i < saveData.inventory.Count; i++)
+            for (var i = 0; i < inventory.Count; i++)
             {
-                var stack = saveData.inventory[i];
+                var stack = inventory[i];
                 var item = runtime.Catalog.FindItem(stack.itemId);
                 if (item == null)
                 {

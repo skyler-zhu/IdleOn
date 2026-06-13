@@ -18,6 +18,8 @@ namespace IdleOnLike.Data
         [SerializeField] private Sprite giverPortrait;
 
         [Header("Progression")]
+        [SerializeField] private string prerequisiteQuestId;
+        [SerializeField] private string requiredCharacterId;
         [SerializeField] private List<QuestObjectiveDefinition> objectives = new List<QuestObjectiveDefinition>();
         [SerializeField] private RewardDefinition rewards = new RewardDefinition();
         [SerializeField] private QuestDefinition nextQuest;
@@ -30,6 +32,8 @@ namespace IdleOnLike.Data
         public Sprite Icon => icon;
         public string GiverName => giverName;
         public Sprite GiverPortrait => giverPortrait;
+        public string PrerequisiteQuestId => prerequisiteQuestId;
+        public string RequiredCharacterId => requiredCharacterId;
         public IReadOnlyList<QuestObjectiveDefinition> Objectives => objectives;
         public RewardDefinition Rewards => rewards;
         public QuestDefinition NextQuest => nextQuest;

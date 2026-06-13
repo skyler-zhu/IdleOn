@@ -21,6 +21,7 @@ namespace IdleOnLike.Quests
             this.state = state;
             this.inventoryService = inventoryService;
             this.state.SaveData.EnsureCollections();
+            ApplyCurrentCharacterProgressToActiveQuests();
         }
 
         public event Action Changed;
@@ -33,13 +34,21 @@ namespace IdleOnLike.Quests
                 return false;
             }
 
-            if (state.Catalog.FindQuest(questId) == null)
+            var quest = state.Catalog.FindQuest(questId);
+            if (quest == null || !IsAvailable(quest))
             {
                 return false;
             }
 
             state.SaveData.activeQuestIds.Add(questId);
-            LogAdded?.Invoke($"Quest accepted: {state.Catalog.FindQuest(questId).Title}");
+            ApplyCurrentCharacterProgress(quest);
+            LogAdded?.Invoke($"Quest accepted: {quest.Title}");
+            if (CanComplete(questId))
+            {
+                CompleteQuest(questId);
+                return true;
+            }
+
             Changed?.Invoke();
             return true;
         }
@@ -71,6 +80,27 @@ namespace IdleOnLike.Quests
             return true;
         }
 
+        public void CompleteAutoCompletableSwitchCharacterQuests()
+        {
+            CompleteAutoCompletableSwitchCharacterQuests(state.SaveData.characterId);
+        }
+
+        public void CompleteAutoCompletableSwitchCharacterQuests(string switchedToCharacterId)
+        {
+            var quests = GetActiveQuests()
+                .Where(HasSwitchCharacterObjective)
+                .ToList();
+
+            foreach (var quest in quests)
+            {
+                ApplyCurrentCharacterProgress(quest, switchedToCharacterId);
+                if (CanComplete(quest.Id))
+                {
+                    CompleteQuest(quest.Id);
+                }
+            }
+        }
+
         private void UnlockCharactersForQuest(QuestDefinition quest)
         {
             if (quest.Id != SecondCharacterUnlockQuestId || state.Catalog.PlayableCharacters.Count < 2)
@@ -79,12 +109,13 @@ namespace IdleOnLike.Quests
             }
 
             var character = state.Catalog.PlayableCharacters[1];
-            if (character == null || state.SaveData.unlockedCharacterIds.Contains(character.Id))
+            state.AccountData.EnsureCollections();
+            if (character == null || state.AccountData.unlockedCharacterIds.Contains(character.Id))
             {
                 return;
             }
 
-            state.SaveData.unlockedCharacterIds.Add(character.Id);
+            state.AccountData.unlockedCharacterIds.Add(character.Id);
             LogAdded?.Invoke($"Character unlocked: {character.DisplayName}.");
         }
 
@@ -168,7 +199,7 @@ namespace IdleOnLike.Quests
         public IReadOnlyList<QuestDefinition> GetAvailableQuests()
         {
             return state.Catalog.Quests
-                .Where(quest => quest != null && !IsQuestActive(quest.Id) && !IsQuestCompleted(quest.Id) && IsPrerequisiteMet(quest))
+                .Where(IsAvailable)
                 .ToList();
         }
 
@@ -209,6 +240,11 @@ namespace IdleOnLike.Quests
 
         private bool IsPrerequisiteMet(QuestDefinition quest)
         {
+            if (!string.IsNullOrEmpty(quest.PrerequisiteQuestId) && !IsQuestCompleted(quest.PrerequisiteQuestId))
+            {
+                return false;
+            }
+
             foreach (var possiblePrevious in state.Catalog.Quests)
             {
                 if (possiblePrevious != null && possiblePrevious.NextQuest == quest)
@@ -218,6 +254,75 @@ namespace IdleOnLike.Quests
             }
 
             return true;
+        }
+
+        private void ApplyCurrentCharacterProgressToActiveQuests()
+        {
+            var changed = false;
+            foreach (var quest in GetActiveQuests())
+            {
+                changed |= ApplyCurrentCharacterProgress(quest);
+            }
+
+            if (changed)
+            {
+                Changed?.Invoke();
+            }
+        }
+
+        private bool ApplyCurrentCharacterProgress(QuestDefinition quest)
+        {
+            return ApplyCurrentCharacterProgress(quest, state.SaveData.characterId);
+        }
+
+        private bool ApplyCurrentCharacterProgress(QuestDefinition quest, string switchedToCharacterId)
+        {
+            if (quest == null || string.IsNullOrEmpty(switchedToCharacterId))
+            {
+                return false;
+            }
+
+            var changed = false;
+            for (var i = 0; i < quest.Objectives.Count; i++)
+            {
+                var objective = quest.Objectives[i];
+                if (objective.objectiveType != QuestObjectiveType.SwitchCharacter)
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(objective.targetId) && objective.targetId != switchedToCharacterId)
+                {
+                    continue;
+                }
+
+                var progress = GetProgressEntry(quest.Id, i, true);
+                var previous = progress.currentAmount;
+                progress.currentAmount = Math.Min(objective.requiredAmount, progress.currentAmount + 1);
+                changed |= previous != progress.currentAmount;
+            }
+
+            return changed;
+        }
+
+        private static bool HasSwitchCharacterObjective(QuestDefinition quest)
+        {
+            return quest != null && quest.Objectives.Any(objective => objective.objectiveType == QuestObjectiveType.SwitchCharacter);
+        }
+
+        private bool IsAvailable(QuestDefinition quest)
+        {
+            if (quest == null || IsQuestActive(quest.Id) || IsQuestCompleted(quest.Id))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(quest.RequiredCharacterId) && state.SaveData.characterId != quest.RequiredCharacterId)
+            {
+                return false;
+            }
+
+            return IsPrerequisiteMet(quest);
         }
 
         private SaveQuestProgress GetProgressEntry(string questId, int objectiveIndex, bool create)
@@ -244,7 +349,7 @@ namespace IdleOnLike.Quests
                 return;
             }
 
-            state.SaveData.coins += reward.coins;
+            state.Coins += reward.coins;
             var levels = ProgressionService.AddExperience(state.SaveData, reward.experience);
             if (reward.coins > 0 || reward.experience > 0)
             {

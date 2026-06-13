@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6a1aafc6dac1bcd46a7a1e375946397d, type: 3}
-  m_Name: Item_Ore
+  m_Name: Item_DuctTape
   m_EditorClassIdentifier: 
-  id: ore
-  displayName: Ore
-  description: A basic mining material gathered from rocks.
+  id: duct_tape
+  displayName: Duct Tape
+  description: Shop material for suspiciously sturdy beginner gear.
   icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
   worldSprite: {fileID: 0}
   worldDropPrefab: {fileID: 0}
   itemType: 0
   equipmentSlot: 0
   maxStack: 99
-  sellValue: 3
+  sellValue: 5
   equipStats:
     maxHp: 0
     attack: 0

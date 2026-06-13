@@ -19,11 +19,15 @@ namespace IdleOnLike.Combat
         private const float EnemyWanderSpeed = 0.58f;
         private const float EnemyWanderRadius = 1.05f;
         private const float EnemyVerticalWanderRadius = 0.08f;
-        private const float ManualMoveMinX = -3.55f;
-        private const float ManualMoveMaxX = 3.45f;
+        private const float ManualMoveMinX = -6.3f;
+        private const float ManualMoveMaxX = 6.3f;
         private const float JumpDuration = 0.72f;
-        private static readonly Vector3 PlayerPositionValue = new Vector3(-3.25f, -1.05f, 0f);
-        private static readonly Vector3 TreeGatherPosition = new Vector3(2.55f, -1.05f, 0f);
+        private const float ClimbSeconds = 1.2f;
+        private const float RopeX = 0.15f;
+        private static readonly Vector3 PlayerPositionValue = new Vector3(5.45f, -1.35f, 0f);
+        private static readonly Vector3 LowerRopePoint = new Vector3(RopeX, -1.35f, 0f);
+        private static readonly Vector3 UpperRopePoint = new Vector3(RopeX, 1.15f, 0f);
+        private static readonly Vector3 TreeGatherPosition = new Vector3(-4.95f, 1.15f, 0f);
 
         private readonly GameState state;
         private readonly InventoryService inventoryService;
@@ -33,6 +37,13 @@ namespace IdleOnLike.Combat
         private readonly List<CombatEnemyInstance> enemies = new List<CombatEnemyInstance>();
 
         private Vector3 playerPosition = PlayerPositionValue;
+        private int facingSign = 1;
+        private bool upperFloor;
+        private bool isClimbing;
+        private bool climbTargetUpperFloor;
+        private float climbElapsedSeconds;
+        private Vector3 climbStartPosition;
+        private Vector3 climbEndPosition;
         private float restRemainingSeconds;
         private float jumpRemainingSeconds;
 
@@ -52,11 +63,15 @@ namespace IdleOnLike.Combat
         public IReadOnlyList<CombatEnemyInstance> Enemies => enemies;
         public CombatEnemyInstance CurrentTarget { get; private set; }
         public Vector3 PlayerPosition => playerPosition;
+        public int FacingSign => facingSign;
         public int PlayerDamage => 5 + state.SaveData.level * 2 + equipmentService.GetAttackBonus();
         public int MaxPlayerHp => 50 + state.SaveData.level * 10;
         public int ExperienceRequired => ProgressionService.GetExperienceRequired(state.SaveData.level);
         public bool IsResting => restRemainingSeconds > 0f;
         public bool IsPlayerNearTree => Vector3.Distance(playerPosition, TreeGatherPosition) <= 0.85f;
+        public bool IsUpperFloor => upperFloor;
+        public bool IsClimbing => isClimbing;
+        public bool IsNearRope => Mathf.Abs(playerPosition.x - RopeX) <= 0.75f;
         public bool IsJumping => jumpRemainingSeconds > 0f;
         public float JumpProgress => IsJumping ? Mathf.Clamp01(1f - jumpRemainingSeconds / JumpDuration) : 0f;
 
@@ -95,7 +110,7 @@ namespace IdleOnLike.Combat
 
         public bool AttackCurrentTarget()
         {
-            if (IsResting)
+            if (IsResting || IsClimbing)
             {
                 AddLog("Resting...");
                 NotifyChanged();
@@ -105,11 +120,14 @@ namespace IdleOnLike.Combat
             SelectCurrentTarget();
             if (CurrentTarget == null)
             {
+                state.SaveData.currentActivity = ZoneActivity.Fighting.ToString();
                 AddLog("No target.");
                 NotifyChanged();
                 return false;
             }
 
+            FaceToward(CurrentTarget.currentPosition.x);
+            state.SaveData.currentActivity = ZoneActivity.Fighting.ToString();
             if (Vector3.Distance(PlayerPosition, CurrentTarget.currentPosition) > MeleeAttackRange)
             {
                 PlayerAttacked?.Invoke();
@@ -137,8 +155,15 @@ namespace IdleOnLike.Combat
             return true;
         }
 
-        public void Tick(float deltaTime, float time, bool fightingActive, bool autoMode)
+        public void Tick(float deltaTime, float time, bool fightingActive, bool choppingActive, bool autoMode)
         {
+            if (isClimbing)
+            {
+                UpdateClimb(deltaTime);
+                NotifyChanged();
+                return;
+            }
+
             if (jumpRemainingSeconds > 0f)
             {
                 jumpRemainingSeconds -= deltaTime;
@@ -167,9 +192,9 @@ namespace IdleOnLike.Combat
             {
                 MovePlayerTowardTarget(deltaTime);
             }
-            else if (autoMode)
+            else if (autoMode && choppingActive)
             {
-                playerPosition = Vector3.MoveTowards(playerPosition, TreeGatherPosition, PlayerMoveSpeed * deltaTime);
+                MovePlayerTowardTree(deltaTime);
             }
 
             foreach (var enemy in enemies)
@@ -194,18 +219,19 @@ namespace IdleOnLike.Combat
 
         public void MovePlayerManual(float horizontal, float deltaTime)
         {
-            if (Mathf.Abs(horizontal) <= 0.01f || IsResting)
+            if (Mathf.Abs(horizontal) <= 0.01f || IsResting || IsClimbing)
             {
                 return;
             }
 
             playerPosition.x = Mathf.Clamp(playerPosition.x + horizontal * PlayerMoveSpeed * deltaTime, ManualMoveMinX, ManualMoveMaxX);
+            FaceFromDelta(horizontal);
             NotifyChanged();
         }
 
         public void Jump()
         {
-            if (IsResting || IsJumping)
+            if (IsResting || IsJumping || IsClimbing)
             {
                 return;
             }
@@ -215,12 +241,32 @@ namespace IdleOnLike.Combat
             NotifyChanged();
         }
 
+        public void UseRope()
+        {
+            if (IsResting || isClimbing || !IsNearRope)
+            {
+                return;
+            }
+
+            StartClimb(!upperFloor);
+        }
+
         private void MovePlayerTowardTarget(float deltaTime)
         {
+            if (upperFloor)
+            {
+                MoveHorizontallyToward(LowerRopePoint.x, deltaTime);
+                if (IsNearRope)
+                {
+                    StartClimb(false);
+                }
+
+                return;
+            }
+
             SelectCurrentTarget();
             if (CurrentTarget == null)
             {
-                playerPosition = Vector3.MoveTowards(playerPosition, PlayerPositionValue, PlayerMoveSpeed * deltaTime);
                 return;
             }
 
@@ -232,7 +278,76 @@ namespace IdleOnLike.Combat
             }
 
             var targetPosition = CurrentTarget.currentPosition - direction.normalized * DesiredMeleeDistance;
+            var previousX = playerPosition.x;
             playerPosition = Vector3.MoveTowards(playerPosition, targetPosition, PlayerMoveSpeed * deltaTime);
+            FaceFromDelta(playerPosition.x - previousX);
+        }
+
+        private void MovePlayerTowardTree(float deltaTime)
+        {
+            if (!upperFloor)
+            {
+                MoveHorizontallyToward(LowerRopePoint.x, deltaTime);
+                if (IsNearRope)
+                {
+                    StartClimb(true);
+                }
+
+                return;
+            }
+
+            MoveHorizontallyToward(TreeGatherPosition.x, deltaTime);
+        }
+
+        private void MoveHorizontallyToward(float targetX, float deltaTime)
+        {
+            var previousX = playerPosition.x;
+            playerPosition.x = Mathf.MoveTowards(playerPosition.x, targetX, PlayerMoveSpeed * deltaTime);
+            FaceFromDelta(playerPosition.x - previousX);
+        }
+
+        private void StartClimb(bool targetUpperFloor)
+        {
+            climbTargetUpperFloor = targetUpperFloor;
+            climbElapsedSeconds = 0f;
+            climbStartPosition = upperFloor ? UpperRopePoint : LowerRopePoint;
+            climbEndPosition = climbTargetUpperFloor ? UpperRopePoint : LowerRopePoint;
+            playerPosition = climbStartPosition;
+            jumpRemainingSeconds = 0f;
+            isClimbing = true;
+            AddLog(climbTargetUpperFloor ? "Climbing up." : "Climbing down.");
+        }
+
+        private void UpdateClimb(float deltaTime)
+        {
+            climbElapsedSeconds = Mathf.Min(ClimbSeconds, climbElapsedSeconds + deltaTime);
+            var progress = Mathf.SmoothStep(0f, 1f, climbElapsedSeconds / ClimbSeconds);
+            playerPosition = Vector3.Lerp(climbStartPosition, climbEndPosition, progress);
+
+            if (climbElapsedSeconds < ClimbSeconds)
+            {
+                return;
+            }
+
+            isClimbing = false;
+            upperFloor = climbTargetUpperFloor;
+            playerPosition = climbEndPosition;
+            AddLog(upperFloor ? "Reached the upper forest." : "Reached the lower forest.");
+        }
+
+        private void FaceToward(float targetX)
+        {
+            FaceFromDelta(targetX - playerPosition.x);
+        }
+
+        private void FaceFromDelta(float deltaX)
+        {
+            if (Mathf.Abs(deltaX) <= 0.01f)
+            {
+                return;
+            }
+
+            facingSign = deltaX < 0f ? -1 : 1;
         }
 
         public void PushEnemyBack(CombatEnemyInstance enemy, float amount)
@@ -283,7 +398,7 @@ namespace IdleOnLike.Combat
         private Vector3 GetSpawnPosition(int index)
         {
             var row = index % 3;
-            return new Vector3(0.35f + row * 1.15f, -1.15f + row * 0.06f, 0f);
+            return new Vector3(-3.75f + row * 1.55f, -1.35f + row * 0.06f, 0f);
         }
 
         private void SelectCurrentTarget()
@@ -365,7 +480,7 @@ namespace IdleOnLike.Combat
         private void AwardEnemyRewards(EnemyDefinition enemy)
         {
             var coins = random.Next(enemy.MinCoins, enemy.MaxCoins + 1);
-            state.SaveData.coins += coins;
+            state.Coins += coins;
             var levelsGained = ProgressionService.AddExperience(state.SaveData, enemy.ExperienceReward);
             AddLog($"{enemy.DisplayName} defeated. +{enemy.ExperienceReward} XP, +{coins} coins.");
             AwardLoot(enemy);

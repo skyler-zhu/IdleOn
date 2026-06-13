@@ -16,10 +16,16 @@ namespace IdleOnLike.Combat
         private Animator playerAnimator;
         private GameObject attackFlash;
         private GameObject treeObject;
+        private GameObject villagePortalObject;
 
         public bool IsPlayerNearTree(Vector3 playerPosition)
         {
             return treeObject != null && Vector3.Distance(playerPosition, treeObject.transform.position) <= 1.35f;
+        }
+
+        public bool IsPlayerNearVillagePortal(Vector3 playerPosition)
+        {
+            return villagePortalObject != null && Vector3.Distance(playerPosition, villagePortalObject.transform.position) <= 1.25f;
         }
 
         public static CombatView Create(GameRuntime runtime, CombatService combatService)
@@ -35,7 +41,9 @@ namespace IdleOnLike.Combat
             runtime = gameRuntime;
             combatService = service;
 
+            ConfigureCamera();
             BuildGround();
+            BuildVillagePortal();
             BuildPlayer();
             BuildTree();
 
@@ -52,7 +60,17 @@ namespace IdleOnLike.Combat
         {
             treeObject = new GameObject("Tree Resource Node");
             treeObject.transform.SetParent(transform, false);
-            treeObject.transform.position = new Vector3(3.25f, -0.95f, 0f);
+            treeObject.transform.position = new Vector3(-5.65f, 1.25f, 0f);
+
+            var nodeSprite = GetResourceNodeSprite("tree");
+            if (nodeSprite != null)
+            {
+                treeObject.transform.localScale = new Vector3(0.95f, 0.95f, 1f);
+                var renderer = treeObject.AddComponent<SpriteRenderer>();
+                renderer.sprite = nodeSprite;
+                renderer.sortingOrder = 1;
+                return;
+            }
 
             var trunk = new GameObject("Trunk");
             trunk.transform.SetParent(treeObject.transform, false);
@@ -71,6 +89,25 @@ namespace IdleOnLike.Combat
             canopyRenderer.sortingOrder = 1;
         }
 
+        private Sprite GetResourceNodeSprite(string nodeId)
+        {
+            var zone = runtime.State.CurrentZone;
+            if (zone == null)
+            {
+                return null;
+            }
+
+            foreach (var node in zone.ResourceNodes)
+            {
+                if (node != null && node.nodeId == nodeId)
+                {
+                    return node.icon;
+                }
+            }
+
+            return null;
+        }
+
         private void Update()
         {
             if (playerTransform != null)
@@ -79,6 +116,7 @@ namespace IdleOnLike.Combat
                     ? Mathf.Sin(combatService.JumpProgress * Mathf.PI) * 1.12f
                     : 0f;
                 playerTransform.position = combatService.PlayerPosition + Vector3.up * jumpOffset;
+                playerTransform.localScale = new Vector3(combatService.FacingSign, 1f, 1f);
             }
 
             foreach (var pair in enemyViews)
@@ -94,11 +132,51 @@ namespace IdleOnLike.Combat
         {
             var ground = new GameObject("Combat Ground");
             ground.transform.SetParent(transform, false);
-            ground.transform.position = new Vector3(0f, -1.65f, 0.1f);
-            ground.transform.localScale = new Vector3(8f, 0.18f, 1f);
+            ground.transform.position = new Vector3(0f, -1.95f, 0.1f);
+            ground.transform.localScale = new Vector3(14f, 0.20f, 1f);
             var renderer = ground.AddComponent<SpriteRenderer>();
             renderer.sprite = CreateSolidSprite(new Color32(54, 86, 65, 255));
             renderer.sortingOrder = -10;
+
+            var upper = new GameObject("Upper Forest Platform");
+            upper.transform.SetParent(transform, false);
+            upper.transform.position = new Vector3(0.8f, 0.62f, 0.1f);
+            upper.transform.localScale = new Vector3(12.4f, 0.18f, 1f);
+            var upperRenderer = upper.AddComponent<SpriteRenderer>();
+            upperRenderer.sprite = CreateSolidSprite(new Color32(64, 104, 73, 255));
+            upperRenderer.sortingOrder = -9;
+
+            var rope = new GameObject("Forest Rope");
+            rope.transform.SetParent(transform, false);
+            rope.transform.position = new Vector3(0.15f, -0.1f, 0f);
+            rope.transform.localScale = new Vector3(0.12f, 2.65f, 1f);
+            var ropeRenderer = rope.AddComponent<SpriteRenderer>();
+            ropeRenderer.sprite = CreateSolidSprite(new Color32(176, 139, 82, 255));
+            ropeRenderer.sortingOrder = 1;
+            CreateWorldLabel("Forest Rope Label", "Rope\nPress F", rope.transform.position + new Vector3(0f, 1.46f, 0f), 26, Color.white);
+        }
+
+        private void BuildVillagePortal()
+        {
+            villagePortalObject = new GameObject("Village Portal");
+            villagePortalObject.transform.SetParent(transform, false);
+            villagePortalObject.transform.position = new Vector3(6.05f, -1.22f, 0f);
+
+            var ring = new GameObject("Village Portal Ring");
+            ring.transform.SetParent(villagePortalObject.transform, false);
+            ring.transform.localScale = new Vector3(0.72f, 1.15f, 1f);
+            var ringRenderer = ring.AddComponent<SpriteRenderer>();
+            ringRenderer.sprite = CreateSolidSprite(new Color32(86, 139, 212, 255));
+            ringRenderer.sortingOrder = 3;
+
+            var core = new GameObject("Village Portal Core");
+            core.transform.SetParent(villagePortalObject.transform, false);
+            core.transform.localScale = new Vector3(0.46f, 0.88f, 1f);
+            var coreRenderer = core.AddComponent<SpriteRenderer>();
+            coreRenderer.sprite = CreateSolidSprite(new Color32(45, 54, 78, 255));
+            coreRenderer.sortingOrder = 4;
+
+            CreateWorldLabel("Village Portal Label", "Village\nPress F", villagePortalObject.transform.position + new Vector3(0f, 0.98f, 0f), 30, Color.white);
         }
 
         private void BuildPlayer()
@@ -270,6 +348,34 @@ namespace IdleOnLike.Combat
             texture.SetPixel(0, 0, color);
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        }
+
+        private static void ConfigureCamera()
+        {
+            var camera = Camera.main;
+            if (camera == null)
+            {
+                return;
+            }
+
+            camera.orthographic = true;
+            camera.orthographicSize = 3.75f;
+            camera.transform.position = new Vector3(0f, -0.35f, -10f);
+        }
+
+        private void CreateWorldLabel(string name, string text, Vector3 position, int fontSize, Color color)
+        {
+            var labelObject = new GameObject(name);
+            labelObject.transform.SetParent(transform, false);
+            labelObject.transform.position = position;
+            var label = labelObject.AddComponent<TextMesh>();
+            label.text = text;
+            label.fontSize = fontSize;
+            label.characterSize = 0.035f;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.color = color;
+            label.GetComponent<MeshRenderer>().sortingOrder = 8;
         }
 
         private void OnDestroy()

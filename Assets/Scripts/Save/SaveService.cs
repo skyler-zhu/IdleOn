@@ -15,7 +15,7 @@ namespace IdleOnLike.Save
             return File.Exists(SavePath);
         }
 
-        public PlayerSaveData Load()
+        public AccountSaveData Load()
         {
             if (!HasSave())
             {
@@ -25,13 +25,26 @@ namespace IdleOnLike.Save
             try
             {
                 var json = File.ReadAllText(SavePath);
-                var saveData = JsonUtility.FromJson<PlayerSaveData>(json);
-                saveData?.EnsureCollections();
-                if (saveData != null && string.IsNullOrEmpty(saveData.lastSavedUtc))
+                var accountData = JsonUtility.FromJson<AccountSaveData>(json);
+                if (accountData != null && accountData.characters != null && accountData.characters.Count > 0)
                 {
-                    saveData.lastSavedUtc = DateTime.UtcNow.ToString("O");
+                    accountData.EnsureCollections();
+                    return accountData;
                 }
-                return saveData;
+
+                var legacySave = JsonUtility.FromJson<PlayerSaveData>(json);
+                if (legacySave == null || string.IsNullOrEmpty(legacySave.characterId))
+                {
+                    return null;
+                }
+
+                legacySave.EnsureCollections();
+                if (string.IsNullOrEmpty(legacySave.lastSavedUtc))
+                {
+                    legacySave.lastSavedUtc = DateTime.UtcNow.ToString("O");
+                }
+
+                return AccountSaveData.FromLegacy(legacySave);
             }
             catch (Exception exception)
             {
@@ -40,7 +53,7 @@ namespace IdleOnLike.Save
             }
         }
 
-        public void Save(PlayerSaveData saveData)
+        public void Save(AccountSaveData saveData)
         {
             if (saveData == null)
             {
@@ -49,6 +62,12 @@ namespace IdleOnLike.Save
 
             saveData.EnsureCollections();
             saveData.lastSavedUtc = DateTime.UtcNow.ToString("O");
+            var active = saveData.GetActiveCharacter();
+            if (active != null)
+            {
+                active.lastSavedUtc = saveData.lastSavedUtc;
+            }
+
             var json = JsonUtility.ToJson(saveData, true);
             Directory.CreateDirectory(Application.persistentDataPath);
             File.WriteAllText(SavePath, json);

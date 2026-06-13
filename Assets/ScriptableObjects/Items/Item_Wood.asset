@@ -21,7 +21,7 @@ MonoBehaviour:
   itemType: 0
   equipmentSlot: 0
   maxStack: 99
-  sellValue: 0
+  sellValue: 1
   equipStats:
     maxHp: 0
     attack: 0

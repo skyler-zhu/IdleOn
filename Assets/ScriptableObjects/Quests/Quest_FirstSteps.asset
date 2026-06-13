@@ -18,6 +18,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
   giverName: Scripticus
   giverPortrait: {fileID: 0}
+  prerequisiteQuestId: ""
+  requiredCharacterId: ""
   objectives:
   - objectiveType: 0
     targetId: mushroom

@@ -5,16 +5,22 @@ namespace IdleOnLike.Core
 {
     public sealed class GameState
     {
-        public GameState(GameCatalog catalog, PlayerSaveData saveData)
+        public GameState(GameCatalog catalog, AccountSaveData accountData)
         {
             Catalog = catalog;
-            SaveData = saveData;
+            AccountData = accountData;
         }
 
         public GameCatalog Catalog { get; }
-        public PlayerSaveData SaveData { get; }
+        public AccountSaveData AccountData { get; }
+        public PlayerSaveData SaveData => AccountData.GetActiveCharacter();
 
         public CharacterDefinition Character => Catalog != null ? Catalog.FindCharacter(SaveData.characterId) : null;
         public ZoneDefinition CurrentZone => Catalog != null ? Catalog.FindZone(SaveData.currentZoneId) : null;
+        public int Coins
+        {
+            get => AccountData.coins;
+            set => AccountData.coins = value;
+        }
     }
 }

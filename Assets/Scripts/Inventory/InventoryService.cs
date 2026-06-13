@@ -12,7 +12,7 @@ namespace IdleOnLike.Inventory
         public InventoryService(GameState state)
         {
             this.state = state;
-            this.state.SaveData.EnsureCollections();
+            this.state.AccountData.EnsureCollections();
         }
 
         public event Action Changed;
@@ -25,14 +25,14 @@ namespace IdleOnLike.Inventory
                 return;
             }
 
-            var existing = state.SaveData.inventory.Find(stack => stack.itemId == itemId);
+            var existing = state.AccountData.sharedInventory.Find(stack => stack.itemId == itemId);
             if (existing != null)
             {
                 existing.quantity += quantity;
             }
             else
             {
-                state.SaveData.inventory.Add(new SaveItemStack
+                state.AccountData.sharedInventory.Add(new SaveItemStack
                 {
                     itemId = itemId,
                     quantity = quantity
@@ -50,7 +50,7 @@ namespace IdleOnLike.Inventory
                 return false;
             }
 
-            var existing = state.SaveData.inventory.Find(stack => stack.itemId == itemId);
+            var existing = state.AccountData.sharedInventory.Find(stack => stack.itemId == itemId);
             if (existing == null || existing.quantity < quantity)
             {
                 return false;
@@ -59,7 +59,7 @@ namespace IdleOnLike.Inventory
             existing.quantity -= quantity;
             if (existing.quantity <= 0)
             {
-                state.SaveData.inventory.Remove(existing);
+                state.AccountData.sharedInventory.Remove(existing);
             }
 
             Changed?.Invoke();
@@ -68,7 +68,7 @@ namespace IdleOnLike.Inventory
 
         public int GetQuantity(string itemId)
         {
-            var existing = state.SaveData.inventory.Find(stack => stack.itemId == itemId);
+            var existing = state.AccountData.sharedInventory.Find(stack => stack.itemId == itemId);
             return existing != null ? existing.quantity : 0;
         }
 

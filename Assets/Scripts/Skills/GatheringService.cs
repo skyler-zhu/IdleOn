@@ -44,7 +44,6 @@ namespace IdleOnLike.Skills
             if (!isNearNode)
             {
                 gatherTimer = 0f;
-                saveData.currentActivity = activity.ToString();
                 LogAdded?.Invoke($"Move near {nodeId}.");
                 Changed?.Invoke();
                 return true;

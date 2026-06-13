@@ -10,25 +10,33 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8dcf01cafab9ae14c866ca61ac994744, type: 3}
-  m_Name: Quest_LearnToChop
+  m_Name: Quest_GearUpGamer
   m_EditorClassIdentifier: 
-  id: learn_to_chop
-  title: Learn to Chop
-  description: Gather wood from trees to open the crafting loop.
+  id: gear_up_gamer
+  title: Gear Up, Gamer!
+  description: Buy Duct Tape from the merchant, craft a Taped Helmet at the anvil, then equip it.
   icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
   giverName: Scripticus
   giverPortrait: {fileID: 0}
   prerequisiteQuestId: ""
   requiredCharacterId: ""
   objectives:
-  - objectiveType: 2
-    targetId: tree
-    requiredAmount: 5
-    displayText: Chop Trees
+  - objectiveType: 1
+    targetId: duct_tape
+    requiredAmount: 1
+    displayText: Buy Duct Tape
+  - objectiveType: 3
+    targetId: taped_helmet
+    requiredAmount: 1
+    displayText: Craft Taped Helmet
+  - objectiveType: 6
+    targetId: taped_helmet
+    requiredAmount: 1
+    displayText: Equip Taped Helmet
   rewards:
-    coins: 30
-    experience: 40
+    coins: 40
+    experience: 55
     items: []
-  nextQuest: {fileID: 11400000, guid: a4dce914f5d2438887f9e927ec793a37, type: 2}
+  nextQuest: {fileID: 11400000, guid: 62f1c4f0b9e947318f58b5e4ed6f6081, type: 2}
   unlockedZone: {fileID: 0}
-  unlockedSkill: {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}
+  unlockedSkill: {fileID: 0}
