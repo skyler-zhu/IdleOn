@@ -23,6 +23,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6a9e4c66742ff5144bb68597195b6dd0, type: 2}
   - {fileID: 11400000, guid: 8e46aabfb31e4854ca2149fd3ad4a0d8, type: 2}
   - {fileID: 11400000, guid: 4e0d5c685a2eb4c48a3439dcfbb9a527, type: 2}
+  - {fileID: 11400000, guid: c7424c49694a4908867066c66de68f88, type: 2}
   enemies:
   - {fileID: 11400000, guid: d3919784e54e237479418816c448d1fc, type: 2}
   - {fileID: 11400000, guid: 9b7b0c0f3ad64f3ea979b3e90db6a4b6, type: 2}
@@ -31,9 +32,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1503b84ff22243d1b2c82b0468f2298a, type: 2}
   skills:
   - {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}
+  - {fileID: 11400000, guid: dc6e0b00840a44779ccf354ad192170a, type: 2}
   zones:
   - {fileID: 11400000, guid: 24ea7f044b07f994f8349afbd4e34a0b, type: 2}
   - {fileID: 11400000, guid: 6cbaee616eb8fb3449c1c5b8aeedf1ff, type: 2}
   - {fileID: 11400000, guid: 6187aef2577925d4c81b2a36d1fa932a, type: 2}
+  - {fileID: 11400000, guid: b8d05632eb0e49a4b971d04d60898bb8, type: 2}
   recipes:
   - {fileID: 11400000, guid: 4fab2781a3ca6744491ac6af587bf8d6, type: 2}

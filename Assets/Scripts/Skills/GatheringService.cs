@@ -10,6 +10,8 @@ namespace IdleOnLike.Skills
     {
         private const string TreeNodeId = "tree";
         private const string WoodItemId = "wood";
+        private const string RockNodeId = "rock";
+        private const string OreItemId = "ore";
 
         private readonly PlayerSaveData saveData;
         private readonly InventoryService inventoryService;
@@ -28,11 +30,13 @@ namespace IdleOnLike.Skills
         public event Action Changed;
         public event Action<string> LogAdded;
 
-        public bool IsGathering => saveData.currentActivity == ZoneActivity.Chopping.ToString();
+        public bool IsChopping => saveData.currentActivity == ZoneActivity.Chopping.ToString();
+        public bool IsMining => saveData.currentActivity == ZoneActivity.Mining.ToString();
+        public bool IsGathering => IsChopping || IsMining;
 
         public bool StartGathering(string nodeId, bool isNearNode = true)
         {
-            if (nodeId != TreeNodeId)
+            if (!TryGetNode(nodeId, out var activity, out _, out _, out var actionLabel))
             {
                 return false;
             }
@@ -40,15 +44,15 @@ namespace IdleOnLike.Skills
             if (!isNearNode)
             {
                 gatherTimer = 0f;
-                saveData.currentActivity = ZoneActivity.Chopping.ToString();
-                LogAdded?.Invoke("Move near tree.");
+                saveData.currentActivity = activity.ToString();
+                LogAdded?.Invoke($"Move near {nodeId}.");
                 Changed?.Invoke();
                 return true;
             }
 
             gatherTimer = 0f;
-            saveData.currentActivity = ZoneActivity.Chopping.ToString();
-            LogAdded?.Invoke("Started chopping.");
+            saveData.currentActivity = activity.ToString();
+            LogAdded?.Invoke(activity == ZoneActivity.Mining ? "Started mining." : "Started chopping.");
             Changed?.Invoke();
             return true;
         }
@@ -81,7 +85,7 @@ namespace IdleOnLike.Skills
             }
 
             gatherTimer -= 2f;
-            GatherWood();
+            GatherCurrentResource();
         }
 
         public bool GatherOnce(bool canGather)
@@ -94,22 +98,55 @@ namespace IdleOnLike.Skills
             if (!canGather)
             {
                 gatherTimer = 0f;
-                LogAdded?.Invoke("Move near tree.");
+                LogAdded?.Invoke(IsMining ? "Move near rock." : "Move near tree.");
                 Changed?.Invoke();
                 return false;
             }
 
             gatherTimer = 0f;
-            GatherWood();
+            GatherCurrentResource();
             return true;
         }
 
-        private void GatherWood()
+        private void GatherCurrentResource()
         {
-            inventoryService.AddItem(WoodItemId, 1);
-            questService.AddProgress(QuestObjectiveType.GatherResource, TreeNodeId, 1);
-            LogAdded?.Invoke("Chopped Wood x1.");
+            var nodeId = IsMining ? RockNodeId : TreeNodeId;
+            if (!TryGetNode(nodeId, out _, out var itemId, out var itemName, out var actionLabel))
+            {
+                return;
+            }
+
+            inventoryService.AddItem(itemId, 1);
+            questService.AddProgress(QuestObjectiveType.GatherResource, nodeId, 1);
+            LogAdded?.Invoke($"{actionLabel} {itemName} x1.");
             Changed?.Invoke();
+        }
+
+        private static bool TryGetNode(string nodeId, out ZoneActivity activity, out string itemId, out string itemName, out string actionLabel)
+        {
+            if (nodeId == RockNodeId)
+            {
+                activity = ZoneActivity.Mining;
+                itemId = OreItemId;
+                itemName = "Ore";
+                actionLabel = "Mined";
+                return true;
+            }
+
+            if (nodeId == TreeNodeId)
+            {
+                activity = ZoneActivity.Chopping;
+                itemId = WoodItemId;
+                itemName = "Wood";
+                actionLabel = "Chopped";
+                return true;
+            }
+
+            activity = ZoneActivity.Fighting;
+            itemId = string.Empty;
+            itemName = string.Empty;
+            actionLabel = string.Empty;
+            return false;
         }
     }
 }

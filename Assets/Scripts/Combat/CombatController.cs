@@ -44,7 +44,7 @@ namespace IdleOnLike.Combat
                 return;
             }
 
-            if (!isAutoMode && Input.GetKeyDown(KeyCode.Space))
+            if (Input.GetKeyDown(KeyCode.Space))
             {
                 combatService.Jump();
             }

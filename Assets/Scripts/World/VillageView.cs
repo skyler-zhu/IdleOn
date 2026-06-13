@@ -13,13 +13,20 @@ namespace IdleOnLike.World
         private const float PlayerMaxX = 4.2f;
         private const float NpcX = 1.65f;
         private const float InteractDistance = 1.05f;
+        private const float PlayerGroundY = -1.05f;
+        private const float JumpDuration = 0.72f;
+        private const float JumpHeight = 1.12f;
+        private const float AttackSeconds = 0.16f;
 
         private GameRuntime runtime;
         private Transform playerTransform;
+        private GameObject attackFlash;
         private GameObject promptCanvas;
         private GameObject dialogueCanvas;
         private Text dialogueBody;
         private Button actionButton;
+        private float jumpRemainingSeconds;
+        private float attackRemainingSeconds;
 
         public static VillageView Create(GameRuntime runtime)
         {
@@ -54,6 +61,18 @@ namespace IdleOnLike.World
                 playerTransform.position = position;
                 playerTransform.localScale = new Vector3(horizontal < 0f ? -1f : 1f, 1f, 1f);
             }
+
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                Jump();
+            }
+
+            if (Input.GetKeyDown(KeyCode.J))
+            {
+                Attack();
+            }
+
+            UpdateActionVisuals();
 
             var nearNpc = IsNearNpc();
             promptCanvas.SetActive(nearNpc && !dialogueCanvas.activeSelf);
@@ -150,7 +169,7 @@ namespace IdleOnLike.World
         {
             var playerObject = new GameObject("Village Player");
             playerObject.transform.SetParent(transform, false);
-            playerObject.transform.position = new Vector3(-2.5f, -1.05f, 0f);
+            playerObject.transform.position = new Vector3(-2.5f, PlayerGroundY, 0f);
             playerTransform = playerObject.transform;
 
             var renderer = playerObject.AddComponent<SpriteRenderer>();
@@ -161,6 +180,52 @@ namespace IdleOnLike.World
             }
 
             renderer.sortingOrder = 5;
+
+            attackFlash = CreateSpriteObject("Village Attack Flash", new Vector3(0.62f, 0.10f, 0f), new Vector3(0.34f, 0.10f, 1f), new Color32(255, 236, 128, 255), 6);
+            attackFlash.transform.SetParent(playerObject.transform, false);
+            attackFlash.SetActive(false);
+        }
+
+        private void Jump()
+        {
+            if (jumpRemainingSeconds > 0f)
+            {
+                return;
+            }
+
+            jumpRemainingSeconds = JumpDuration;
+        }
+
+        private void Attack()
+        {
+            attackRemainingSeconds = AttackSeconds;
+            if (attackFlash != null)
+            {
+                attackFlash.SetActive(true);
+            }
+        }
+
+        private void UpdateActionVisuals()
+        {
+            if (jumpRemainingSeconds > 0f)
+            {
+                jumpRemainingSeconds = Mathf.Max(0f, jumpRemainingSeconds - Time.deltaTime);
+            }
+
+            if (attackRemainingSeconds > 0f)
+            {
+                attackRemainingSeconds = Mathf.Max(0f, attackRemainingSeconds - Time.deltaTime);
+            }
+
+            if (attackFlash != null)
+            {
+                attackFlash.SetActive(attackRemainingSeconds > 0f);
+            }
+
+            var position = playerTransform.position;
+            var jumpProgress = jumpRemainingSeconds > 0f ? Mathf.Clamp01(1f - jumpRemainingSeconds / JumpDuration) : 0f;
+            position.y = PlayerGroundY + Mathf.Sin(jumpProgress * Mathf.PI) * JumpHeight;
+            playerTransform.position = position;
         }
 
         private void BuildNpc()

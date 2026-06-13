@@ -13,6 +13,7 @@ namespace IdleOnLike.Progression
         private const int MaxOfflineHours = 8;
         private const int FightingKillsPerMinute = 4;
         private const int ChoppingWoodPerMinute = 8;
+        private const int MiningOrePerMinute = 8;
         private readonly System.Random random = new System.Random();
 
         private readonly PlayerSaveData saveData;
@@ -43,6 +44,10 @@ namespace IdleOnLike.Progression
             if (result.activity == ZoneActivity.Chopping)
             {
                 ApplyChopping(minutes, result);
+            }
+            else if (result.activity == ZoneActivity.Mining)
+            {
+                ApplyMining(minutes, result);
             }
             else
             {
@@ -83,6 +88,15 @@ namespace IdleOnLike.Progression
             questService.AddProgress(QuestObjectiveType.GatherResource, "tree", quantity);
             AddItem(result, "wood", "Wood", quantity);
             AddQuestSummary(result, "Gather tree");
+        }
+
+        private void ApplyMining(int minutes, OfflineGainsResult result)
+        {
+            var quantity = minutes * MiningOrePerMinute;
+            inventoryService.AddItem("ore", quantity);
+            questService.AddProgress(QuestObjectiveType.GatherResource, "rock", quantity);
+            AddItem(result, "ore", "Ore", quantity);
+            AddQuestSummary(result, "Gather rock");
         }
 
         private EnemyDefinition PickEnemy(ZoneDefinition zone)

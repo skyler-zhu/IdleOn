@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82043af5dafbf1942b192333d483ba66, type: 3}
+  m_Name: Zone_MineCave
+  m_EditorClassIdentifier: 
+  id: mine_cave
+  displayName: Mine Cave
+  description: A two-floor cave for the mining loop.
+  sceneName: MineCave
+  mapIcon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
+  backgroundSprite: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
+  zonePrefab: {fileID: 0}
+  requiredQuest: {fileID: 11400000, guid: 1503b84ff22243d1b2c82b0468f2298a, type: 2}
+  requiredCharacterLevel: 0
+  enemies: []
+  resourceNodes:
+  - nodeId: rock
+    displayName: Rock Vein
+    skillType: 2
+    icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
+    nodePrefab: {fileID: 0}
+    resourceDrops:
+    - item: {fileID: 11400000, guid: c7424c49694a4908867066c66de68f88, type: 2}
+      dropChance: 1
+      minQuantity: 1
+      maxQuantity: 1
+    gatherSeconds: 2
+    skillExperience: 5
+  nextZonePreview: {fileID: 0}

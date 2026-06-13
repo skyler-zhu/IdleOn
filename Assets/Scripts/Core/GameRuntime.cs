@@ -107,7 +107,22 @@ namespace IdleOnLike.Core
 
         public void TravelToForest()
         {
+            if (State != null)
+            {
+                State.SaveData.currentActivity = ZoneActivity.Fighting.ToString();
+            }
+
             TravelToZone(catalog.ForestZone);
+        }
+
+        public void TravelToMineCave()
+        {
+            if (State != null)
+            {
+                State.SaveData.currentActivity = ZoneActivity.Mining.ToString();
+            }
+
+            TravelToZone(catalog.FindZone("mine_cave"));
         }
 
         public void ReturnToVillage()
@@ -180,8 +195,15 @@ namespace IdleOnLike.Core
                 return;
             }
 
+            if (State.CurrentZone.Id == "mine_cave")
+            {
+                MineCaveController.Create(this);
+                ShowPendingOfflineGainsIfAny();
+                return;
+            }
+
             VillageView.Create(this);
-            VillageHudScreen.Build(this, TravelToForest, ReturnToCharacterSelect, DeleteSaveAndReturnToCharacterSelect);
+            VillageHudScreen.Build(this, TravelToForest, TravelToMineCave, ReturnToCharacterSelect, DeleteSaveAndReturnToCharacterSelect);
             ShowPendingOfflineGainsIfAny();
         }
 
