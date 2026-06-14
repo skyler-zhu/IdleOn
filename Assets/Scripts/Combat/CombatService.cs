@@ -33,6 +33,7 @@ namespace IdleOnLike.Combat
         private readonly InventoryService inventoryService;
         private readonly EquipmentService equipmentService;
         private readonly QuestService questService;
+        private readonly TalentService talentService;
         private readonly System.Random random = new System.Random();
         private readonly List<CombatEnemyInstance> enemies = new List<CombatEnemyInstance>();
 
@@ -47,12 +48,13 @@ namespace IdleOnLike.Combat
         private float restRemainingSeconds;
         private float jumpRemainingSeconds;
 
-        public CombatService(GameState state, InventoryService inventoryService, EquipmentService equipmentService, QuestService questService)
+        public CombatService(GameState state, InventoryService inventoryService, EquipmentService equipmentService, QuestService questService, TalentService talentService)
         {
             this.state = state;
             this.inventoryService = inventoryService;
             this.equipmentService = equipmentService;
             this.questService = questService;
+            this.talentService = talentService;
 
             if (state.SaveData.currentHp <= 0)
             {
@@ -64,8 +66,8 @@ namespace IdleOnLike.Combat
         public CombatEnemyInstance CurrentTarget { get; private set; }
         public Vector3 PlayerPosition => playerPosition;
         public int FacingSign => facingSign;
-        public int PlayerDamage => 5 + state.SaveData.level * 2 + equipmentService.GetAttackBonus();
-        public int MaxPlayerHp => 50 + state.SaveData.level * 10;
+        public int PlayerDamage => 5 + state.SaveData.level * 2 + equipmentService.GetAttackBonus() + talentService.GetDamageBonus();
+        public int MaxPlayerHp => 50 + state.SaveData.level * 10 + talentService.GetMaxHpBonus();
         public int ExperienceRequired => ProgressionService.GetExperienceRequired(state.SaveData.level);
         public bool IsResting => restRemainingSeconds > 0f;
         public bool IsPlayerNearTree => Vector3.Distance(playerPosition, TreeGatherPosition) <= 0.85f;
@@ -224,7 +226,7 @@ namespace IdleOnLike.Combat
                 return;
             }
 
-            playerPosition.x = Mathf.Clamp(playerPosition.x + horizontal * PlayerMoveSpeed * deltaTime, ManualMoveMinX, ManualMoveMaxX);
+            playerPosition.x = Mathf.Clamp(playerPosition.x + horizontal * GetPlayerMoveSpeed() * deltaTime, ManualMoveMinX, ManualMoveMaxX);
             FaceFromDelta(horizontal);
             NotifyChanged();
         }
@@ -279,7 +281,7 @@ namespace IdleOnLike.Combat
 
             var targetPosition = CurrentTarget.currentPosition - direction.normalized * DesiredMeleeDistance;
             var previousX = playerPosition.x;
-            playerPosition = Vector3.MoveTowards(playerPosition, targetPosition, PlayerMoveSpeed * deltaTime);
+            playerPosition = Vector3.MoveTowards(playerPosition, targetPosition, GetPlayerMoveSpeed() * deltaTime);
             FaceFromDelta(playerPosition.x - previousX);
         }
 
@@ -302,8 +304,13 @@ namespace IdleOnLike.Combat
         private void MoveHorizontallyToward(float targetX, float deltaTime)
         {
             var previousX = playerPosition.x;
-            playerPosition.x = Mathf.MoveTowards(playerPosition.x, targetX, PlayerMoveSpeed * deltaTime);
+            playerPosition.x = Mathf.MoveTowards(playerPosition.x, targetX, GetPlayerMoveSpeed() * deltaTime);
             FaceFromDelta(playerPosition.x - previousX);
+        }
+
+        private float GetPlayerMoveSpeed()
+        {
+            return PlayerMoveSpeed * talentService.GetMoveSpeedMultiplier();
         }
 
         private void StartClimb(bool targetUpperFloor)
@@ -465,6 +472,13 @@ namespace IdleOnLike.Combat
 
         private void DamagePlayer(int damage, string enemyName)
         {
+            if (random.NextDouble() < talentService.GetDodgeChance())
+            {
+                AddLog($"Dodged {enemyName}.");
+                NotifyChanged();
+                return;
+            }
+
             state.SaveData.currentHp = Mathf.Max(0, state.SaveData.currentHp - damage);
             AddLog($"{enemyName} hits you for {damage}.");
             PlayerDamaged?.Invoke();

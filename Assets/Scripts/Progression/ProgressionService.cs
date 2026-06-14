@@ -23,10 +23,16 @@ namespace IdleOnLike.Progression
             {
                 saveData.experience -= GetExperienceRequired(saveData.level);
                 saveData.level++;
+                saveData.talentPoints++;
                 levelsGained++;
             }
 
             return levelsGained;
+        }
+
+        public static int GetSkillExperienceRequired(int level)
+        {
+            return 30 + (Mathf.Max(1, level) - 1) * 30;
         }
     }
 }

@@ -27,6 +27,7 @@ namespace IdleOnLike.World
 
         private GameRuntime runtime;
         private Transform playerTransform;
+        private Animator playerAnimator;
         private GameObject attackFlash;
         private GameObject promptCanvas;
         private Text promptText;
@@ -82,10 +83,11 @@ namespace IdleOnLike.World
             }
 
             var horizontal = Input.GetAxisRaw("Horizontal");
+            AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", Mathf.Abs(horizontal));
             if (Mathf.Abs(horizontal) > 0.01f)
             {
                 var position = playerTransform.position;
-                position.x = Mathf.Clamp(position.x + horizontal * MoveSpeed * Time.deltaTime, PlayerMinX, PlayerMaxX);
+                position.x = Mathf.Clamp(position.x + horizontal * GetMoveSpeed() * Time.deltaTime, PlayerMinX, PlayerMaxX);
                 playerTransform.position = position;
                 playerTransform.localScale = new Vector3(horizontal < 0f ? -1f : 1f, 1f, 1f);
             }
@@ -112,6 +114,11 @@ namespace IdleOnLike.World
         private bool IsNearNpc()
         {
             return !upperFloor && Mathf.Abs(playerTransform.position.x - NpcX) <= InteractDistance;
+        }
+
+        private float GetMoveSpeed()
+        {
+            return MoveSpeed * runtime.TalentService.GetMoveSpeedMultiplier();
         }
 
         private bool IsNearAnvil()
@@ -328,6 +335,12 @@ namespace IdleOnLike.World
 
             renderer.sortingOrder = 5;
 
+            if (runtime.State.Character != null && runtime.State.Character.AnimatorController != null)
+            {
+                playerAnimator = playerObject.AddComponent<Animator>();
+                playerAnimator.runtimeAnimatorController = runtime.State.Character.AnimatorController;
+            }
+
             attackFlash = CreateSpriteObject("Village Attack Flash", new Vector3(0.62f, 0.10f, 0f), new Vector3(0.34f, 0.10f, 1f), new Color32(255, 236, 128, 255), 6);
             attackFlash.transform.SetParent(playerObject.transform, false);
             attackFlash.SetActive(false);
@@ -341,12 +354,14 @@ namespace IdleOnLike.World
             }
 
             jumpRemainingSeconds = JumpDuration;
+            AnimatorParameterUtil.SetTrigger(playerAnimator, "Jump");
         }
 
         private void Attack()
         {
             attackRemainingSeconds = AttackSeconds;
-            if (attackFlash != null)
+            AnimatorParameterUtil.SetTrigger(playerAnimator, "Attack");
+            if (attackFlash != null && !AnimatorParameterUtil.HasController(playerAnimator))
             {
                 attackFlash.SetActive(true);
             }
@@ -364,7 +379,7 @@ namespace IdleOnLike.World
                 attackRemainingSeconds = Mathf.Max(0f, attackRemainingSeconds - Time.deltaTime);
             }
 
-            if (attackFlash != null)
+            if (attackFlash != null && !AnimatorParameterUtil.HasController(playerAnimator))
             {
                 attackFlash.SetActive(attackRemainingSeconds > 0f);
             }
@@ -453,6 +468,7 @@ namespace IdleOnLike.World
             }
 
             isClimbing = true;
+            AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", 0f);
         }
 
         private void UpdateClimb()

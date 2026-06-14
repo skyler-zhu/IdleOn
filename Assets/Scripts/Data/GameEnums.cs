@@ -35,6 +35,23 @@ namespace IdleOnLike.Data
         Smithing
     }
 
+    public enum TalentStatType
+    {
+        Strength,
+        Agility,
+        Wisdom,
+        Luck,
+        AttackPower,
+        MaxHp
+    }
+
+    public enum SkillNodeEffectType
+    {
+        ExtraWoodChance,
+        ExtraOreChance,
+        GatherSpeed
+    }
+
     public enum QuestObjectiveType
     {
         KillEnemy,

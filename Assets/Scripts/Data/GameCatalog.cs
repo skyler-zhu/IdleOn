@@ -21,6 +21,8 @@ namespace IdleOnLike.Data
         [SerializeField] private List<EnemyDefinition> enemies = new List<EnemyDefinition>();
         [SerializeField] private List<QuestDefinition> quests = new List<QuestDefinition>();
         [SerializeField] private List<SkillDefinition> skills = new List<SkillDefinition>();
+        [SerializeField] private List<TalentDefinition> talents = new List<TalentDefinition>();
+        [SerializeField] private List<SkillNodeDefinition> skillNodes = new List<SkillNodeDefinition>();
         [SerializeField] private List<ZoneDefinition> zones = new List<ZoneDefinition>();
         [SerializeField] private List<RecipeDefinition> recipes = new List<RecipeDefinition>();
 
@@ -33,6 +35,8 @@ namespace IdleOnLike.Data
         public IReadOnlyList<EnemyDefinition> Enemies => enemies;
         public IReadOnlyList<QuestDefinition> Quests => quests;
         public IReadOnlyList<SkillDefinition> Skills => skills;
+        public IReadOnlyList<TalentDefinition> Talents => talents;
+        public IReadOnlyList<SkillNodeDefinition> SkillNodes => skillNodes;
         public IReadOnlyList<ZoneDefinition> Zones => zones;
         public IReadOnlyList<RecipeDefinition> Recipes => recipes;
 
@@ -59,6 +63,16 @@ namespace IdleOnLike.Data
         public SkillDefinition FindSkill(string id)
         {
             return skills.FirstOrDefault(skill => skill != null && skill.Id == id);
+        }
+
+        public TalentDefinition FindTalent(string id)
+        {
+            return talents.FirstOrDefault(talent => talent != null && talent.Id == id);
+        }
+
+        public SkillNodeDefinition FindSkillNode(string id)
+        {
+            return skillNodes.FirstOrDefault(node => node != null && node.Id == id);
         }
 
         public ZoneDefinition FindZone(string id)

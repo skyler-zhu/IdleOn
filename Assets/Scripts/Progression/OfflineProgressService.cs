@@ -21,14 +21,16 @@ namespace IdleOnLike.Progression
         private readonly GameCatalog catalog;
         private readonly InventoryService inventoryService;
         private readonly QuestService questService;
+        private readonly SkillTreeService skillTreeService;
 
-        public OfflineProgressService(PlayerSaveData saveData, AccountSaveData accountData, GameCatalog catalog, InventoryService inventoryService, QuestService questService)
+        public OfflineProgressService(PlayerSaveData saveData, AccountSaveData accountData, GameCatalog catalog, InventoryService inventoryService, QuestService questService, SkillTreeService skillTreeService)
         {
             this.saveData = saveData;
             this.accountData = accountData;
             this.catalog = catalog;
             this.inventoryService = inventoryService;
             this.questService = questService;
+            this.skillTreeService = skillTreeService;
         }
 
         public OfflineGainsResult CalculateOfflineGains(TimeSpan elapsed)
@@ -85,20 +87,31 @@ namespace IdleOnLike.Progression
 
         private void ApplyChopping(int minutes, OfflineGainsResult result)
         {
-            var quantity = minutes * ChoppingWoodPerMinute;
+            var quantity = GetOfflineGatherQuantity(SkillType.Chopping, minutes, ChoppingWoodPerMinute);
             inventoryService.AddItem("wood", quantity);
             questService.AddProgress(QuestObjectiveType.GatherResource, "tree", quantity);
+            skillTreeService.AddSkillExperience(SkillType.Chopping, quantity * 5);
             AddItem(result, "wood", "Wood", quantity);
             AddQuestSummary(result, "Gather tree");
         }
 
         private void ApplyMining(int minutes, OfflineGainsResult result)
         {
-            var quantity = minutes * MiningOrePerMinute;
+            var quantity = GetOfflineGatherQuantity(SkillType.Mining, minutes, MiningOrePerMinute);
             inventoryService.AddItem("ore", quantity);
             questService.AddProgress(QuestObjectiveType.GatherResource, "rock", quantity);
+            skillTreeService.AddSkillExperience(SkillType.Mining, quantity * 5);
             AddItem(result, "ore", "Ore", quantity);
             AddQuestSummary(result, "Gather rock");
+        }
+
+        private int GetOfflineGatherQuantity(SkillType skillType, int minutes, int basePerMinute)
+        {
+            var gatherSeconds = skillTreeService.GetGatherSeconds(skillType, 2f);
+            var speedMultiplier = 2f / gatherSeconds;
+            var baseQuantity = Mathf.FloorToInt(minutes * basePerMinute * speedMultiplier);
+            var extraChance = skillTreeService.GetExtraDropChance(skillType);
+            return Mathf.Max(0, baseQuantity + Mathf.FloorToInt(baseQuantity * extraChance));
         }
 
         private EnemyDefinition PickEnemy(ZoneDefinition zone)

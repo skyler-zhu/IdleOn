@@ -10,7 +10,6 @@ namespace IdleOnLike.World
     public sealed class MineCaveController : MonoBehaviour
     {
         private const float MoveSpeed = 3.1f;
-        private const float ManualMineSeconds = 2f;
         private const float JumpDuration = 0.72f;
         private const float JumpHeight = 1.12f;
         private const float AttackSeconds = 0.16f;
@@ -27,6 +26,7 @@ namespace IdleOnLike.World
         private readonly List<string> logLines = new List<string>();
         private GameRuntime runtime;
         private Transform playerTransform;
+        private Animator playerAnimator;
         private GameObject attackFlash;
         private Text statusText;
         private Text promptText;
@@ -127,28 +127,37 @@ namespace IdleOnLike.World
         {
             if (Mathf.Abs(horizontal) <= 0.01f)
             {
+                AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", 0f);
                 return;
             }
 
             var position = playerTransform.position;
-            position.x = Mathf.Clamp(position.x + horizontal * MoveSpeed * Time.deltaTime, -6.6f, 6.4f);
+            position.x = Mathf.Clamp(position.x + horizontal * GetMoveSpeed() * Time.deltaTime, -6.6f, 6.4f);
             playerTransform.position = position;
             playerTransform.localScale = new Vector3(horizontal < 0f ? -1f : 1f, 1f, 1f);
+            AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", Mathf.Abs(horizontal));
         }
 
         private void MoveAuto()
         {
             if (!runtime.GatheringService.IsMining)
             {
+                AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", 0f);
                 return;
             }
 
             var target = upperFloor ? UpperRockPosition : LowerRockPosition;
             var position = playerTransform.position;
             var previousX = position.x;
-            position.x = Vector3.MoveTowards(position, target, MoveSpeed * Time.deltaTime).x;
+            position.x = Vector3.MoveTowards(position, target, GetMoveSpeed() * Time.deltaTime).x;
             playerTransform.position = position;
             FaceFromDelta(position.x - previousX);
+            AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", Mathf.Abs(position.x - previousX) > 0.001f ? 1f : 0f);
+        }
+
+        private float GetMoveSpeed()
+        {
+            return MoveSpeed * runtime.TalentService.GetMoveSpeedMultiplier();
         }
 
         private void StartClimb()
@@ -171,6 +180,7 @@ namespace IdleOnLike.World
             }
 
             isClimbing = true;
+            AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", 0f);
             AddLog(climbTargetUpperFloor ? "Climbing to upper vein..." : "Climbing to lower vein...");
         }
 
@@ -211,7 +221,7 @@ namespace IdleOnLike.World
             }
 
             runtime.GatheringService.GatherOnce(IsNearRock());
-            nextManualMineTime = Time.time + ManualMineSeconds;
+            nextManualMineTime = Time.time + runtime.SkillTreeService.GetGatherSeconds(SkillType.Mining, 2f);
         }
 
         private bool IsNearRope()
@@ -256,6 +266,11 @@ namespace IdleOnLike.World
             var renderer = player.GetComponent<SpriteRenderer>();
             renderer.sprite = runtime.State.Character != null ? runtime.State.Character.IdleSprite : renderer.sprite;
             playerTransform = player.transform;
+            if (runtime.State.Character != null && runtime.State.Character.AnimatorController != null)
+            {
+                playerAnimator = player.AddComponent<Animator>();
+                playerAnimator.runtimeAnimatorController = runtime.State.Character.AnimatorController;
+            }
 
             attackFlash = CreateSprite("Mine Attack Flash", new Vector3(0.62f, 0.10f, 0f), new Vector3(0.34f, 0.10f, 1f), new Color32(255, 236, 128, 255), 6);
             attackFlash.transform.SetParent(player.transform, false);
@@ -325,6 +340,7 @@ namespace IdleOnLike.World
             }
 
             jumpRemainingSeconds = JumpDuration;
+            AnimatorParameterUtil.SetTrigger(playerAnimator, "Jump");
         }
 
         private void Attack()
@@ -335,7 +351,8 @@ namespace IdleOnLike.World
             }
 
             attackRemainingSeconds = AttackSeconds;
-            if (attackFlash != null)
+            AnimatorParameterUtil.SetTrigger(playerAnimator, "Attack");
+            if (attackFlash != null && !AnimatorParameterUtil.HasController(playerAnimator))
             {
                 attackFlash.SetActive(true);
             }
@@ -373,7 +390,7 @@ namespace IdleOnLike.World
                 attackRemainingSeconds = Mathf.Max(0f, attackRemainingSeconds - Time.deltaTime);
             }
 
-            if (attackFlash != null)
+            if (attackFlash != null && !AnimatorParameterUtil.HasController(playerAnimator))
             {
                 attackFlash.SetActive(attackRemainingSeconds > 0f);
             }

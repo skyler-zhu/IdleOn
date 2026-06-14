@@ -17,6 +17,7 @@ namespace IdleOnLike.Combat
         private GameObject attackFlash;
         private GameObject treeObject;
         private GameObject villagePortalObject;
+        private bool wasJumping;
 
         public bool IsPlayerNearTree(Vector3 playerPosition)
         {
@@ -112,11 +113,20 @@ namespace IdleOnLike.Combat
         {
             if (playerTransform != null)
             {
+                var previousPosition = playerTransform.position;
                 var jumpOffset = combatService.IsJumping
                     ? Mathf.Sin(combatService.JumpProgress * Mathf.PI) * 1.12f
                     : 0f;
                 playerTransform.position = combatService.PlayerPosition + Vector3.up * jumpOffset;
                 playerTransform.localScale = new Vector3(combatService.FacingSign, 1f, 1f);
+                var horizontalSpeed = Mathf.Abs(playerTransform.position.x - previousPosition.x) > 0.001f ? 1f : 0f;
+                AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", horizontalSpeed);
+                if (combatService.IsJumping && !wasJumping)
+                {
+                    AnimatorParameterUtil.SetTrigger(playerAnimator, "Jump");
+                }
+
+                wasJumping = combatService.IsJumping;
             }
 
             foreach (var pair in enemyViews)
@@ -195,9 +205,9 @@ namespace IdleOnLike.Combat
 
             playerRenderer.sortingOrder = 5;
 
-            playerAnimator = playerObject.AddComponent<Animator>();
             if (runtime.State.Character != null && runtime.State.Character.AnimatorController != null)
             {
+                playerAnimator = playerObject.AddComponent<Animator>();
                 playerAnimator.runtimeAnimatorController = runtime.State.Character.AnimatorController;
             }
 
@@ -231,12 +241,27 @@ namespace IdleOnLike.Combat
                 ? enemy.enemyDefinition.IdleSprite
                 : CreateSolidSprite(new Color32(123, 212, 97, 255));
             enemyView.Renderer.color = Color.white;
+            if (enemy.enemyDefinition.AnimatorController != null)
+            {
+                if (enemyView.Animator == null)
+                {
+                    enemyView.Animator = enemyView.Root.AddComponent<Animator>();
+                }
+
+                enemyView.Animator.runtimeAnimatorController = enemy.enemyDefinition.AnimatorController;
+            }
+            else if (enemyView.Animator != null)
+            {
+                Destroy(enemyView.Animator);
+                enemyView.Animator = null;
+            }
         }
 
         private void OnEnemyDamaged(CombatEnemyInstance enemy)
         {
             if (enemyViews.TryGetValue(enemy, out var enemyView))
             {
+                AnimatorParameterUtil.SetTrigger(enemyView.Animator, "Hit");
                 StopCoroutineSafe(enemyView.HitRoutine);
                 enemyView.HitRoutine = StartCoroutine(PlayEnemyHit(enemy, enemyView));
             }
@@ -246,6 +271,7 @@ namespace IdleOnLike.Combat
         {
             if (enemyViews.TryGetValue(enemy, out var enemyView))
             {
+                AnimatorParameterUtil.SetTrigger(enemyView.Animator, "Death");
                 StopCoroutineSafe(enemyView.DeathRoutine);
                 enemyView.DeathRoutine = StartCoroutine(PlayEnemyDeath(enemyView));
             }
@@ -253,9 +279,9 @@ namespace IdleOnLike.Combat
 
         private void OnPlayerAttacked()
         {
-            if (playerAnimator != null && playerAnimator.runtimeAnimatorController != null)
+            if (AnimatorParameterUtil.HasController(playerAnimator))
             {
-                playerAnimator.SetTrigger("Attack");
+                AnimatorParameterUtil.SetTrigger(playerAnimator, "Attack");
                 return;
             }
 
@@ -398,6 +424,7 @@ namespace IdleOnLike.Combat
         {
             public GameObject Root;
             public SpriteRenderer Renderer;
+            public Animator Animator;
             public Coroutine HitRoutine;
             public Coroutine DeathRoutine;
         }

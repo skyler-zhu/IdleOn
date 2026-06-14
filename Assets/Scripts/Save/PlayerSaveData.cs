@@ -12,12 +12,16 @@ namespace IdleOnLike.Save
         public int level = 1;
         public int experience;
         public int coins;
+        public int talentPoints;
         public int currentHp;
         public string currentActivity;
         public string currentZoneId;
         public string lastSavedUtc;
         public List<SaveItemStack> inventory = new List<SaveItemStack>();
         public List<SaveEquipmentSlot> equipment = new List<SaveEquipmentSlot>();
+        public List<SaveRankEntry> talentRanks = new List<SaveRankEntry>();
+        public List<SaveRankEntry> skillNodeRanks = new List<SaveRankEntry>();
+        public List<SaveSkillProgress> skillProgress = new List<SaveSkillProgress>();
         public List<string> activeQuestIds = new List<string>();
         public List<string> completedQuestIds = new List<string>();
         public List<SaveQuestProgress> questProgress = new List<SaveQuestProgress>();
@@ -33,6 +37,21 @@ namespace IdleOnLike.Save
             if (equipment == null)
             {
                 equipment = new List<SaveEquipmentSlot>();
+            }
+
+            if (talentRanks == null)
+            {
+                talentRanks = new List<SaveRankEntry>();
+            }
+
+            if (skillNodeRanks == null)
+            {
+                skillNodeRanks = new List<SaveRankEntry>();
+            }
+
+            if (skillProgress == null)
+            {
+                skillProgress = new List<SaveSkillProgress>();
             }
 
             if (activeQuestIds == null)
@@ -213,6 +232,22 @@ namespace IdleOnLike.Save
     {
         public EquipmentSlot slot;
         public string itemId;
+    }
+
+    [Serializable]
+    public sealed class SaveRankEntry
+    {
+        public string id;
+        public int rank;
+    }
+
+    [Serializable]
+    public sealed class SaveSkillProgress
+    {
+        public SkillType skillType;
+        public int level = 1;
+        public int experience;
+        public int points;
     }
 
     [Serializable]

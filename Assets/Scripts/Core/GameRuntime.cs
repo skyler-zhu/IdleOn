@@ -29,6 +29,8 @@ namespace IdleOnLike.Core
         private GatheringService gatheringService;
         private CraftingService craftingService;
         private ShopService shopService;
+        private TalentService talentService;
+        private SkillTreeService skillTreeService;
         private OfflineProgressService offlineProgressService;
         private OfflineGainsResult pendingOfflineGains;
         private WorldMapPanel worldMapPanel;
@@ -42,6 +44,8 @@ namespace IdleOnLike.Core
         public GatheringService GatheringService => gatheringService;
         public CraftingService CraftingService => craftingService;
         public ShopService ShopService => shopService;
+        public TalentService TalentService => talentService;
+        public SkillTreeService SkillTreeService => skillTreeService;
         public OfflineGainsResult PendingOfflineGains => pendingOfflineGains;
 
         private void Update()
@@ -173,6 +177,8 @@ namespace IdleOnLike.Core
             gatheringService = null;
             craftingService = null;
             shopService = null;
+            talentService = null;
+            skillTreeService = null;
             offlineProgressService = null;
             pendingOfflineGains = null;
             worldMapPanel?.Hide();
@@ -234,11 +240,13 @@ namespace IdleOnLike.Core
         {
             inventoryService = new InventoryService(State);
             equipmentService = new EquipmentService(State, inventoryService);
+            talentService = new TalentService(State);
+            skillTreeService = new SkillTreeService(State);
             questService = new QuestService(State, inventoryService);
-            gatheringService = new GatheringService(State.SaveData, inventoryService, questService);
+            gatheringService = new GatheringService(State.SaveData, inventoryService, questService, skillTreeService);
             craftingService = new CraftingService(State, inventoryService);
             shopService = new ShopService(State, inventoryService);
-            offlineProgressService = new OfflineProgressService(State.SaveData, State.AccountData, catalog, inventoryService, questService);
+            offlineProgressService = new OfflineProgressService(State.SaveData, State.AccountData, catalog, inventoryService, questService, skillTreeService);
             inventoryService.ItemAdded += questService.AddProgress;
             equipmentService.ItemEquipped += questService.AddProgress;
             craftingService.ItemCrafted += questService.AddProgress;
@@ -248,6 +256,8 @@ namespace IdleOnLike.Core
             gatheringService.Changed += Save;
             craftingService.Changed += Save;
             shopService.Changed += Save;
+            talentService.Changed += Save;
+            skillTreeService.Changed += Save;
         }
 
         private void EnsureWorldMap()
@@ -306,8 +316,9 @@ namespace IdleOnLike.Core
                 var tempState = new GameState(catalog, State.AccountData);
                 var tempInventory = new InventoryService(tempState);
                 var tempQuest = new QuestService(tempState, tempInventory);
+                var tempSkillTree = new SkillTreeService(tempState);
                 tempInventory.ItemAdded += tempQuest.AddProgress;
-                var tempOffline = new OfflineProgressService(characterSave, State.AccountData, catalog, tempInventory, tempQuest);
+                var tempOffline = new OfflineProgressService(characterSave, State.AccountData, catalog, tempInventory, tempQuest, tempSkillTree);
                 var result = tempOffline.CalculateOfflineGains(elapsed);
                 tempInventory.ItemAdded -= tempQuest.AddProgress;
                 characterSave.lastSavedUtc = DateTime.UtcNow.ToString("O");

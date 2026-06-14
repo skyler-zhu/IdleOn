@@ -29,7 +29,7 @@ namespace IdleOnLike.Combat
         private void Initialize(GameRuntime gameRuntime)
         {
             runtime = gameRuntime;
-            combatService = new CombatService(runtime.State, runtime.InventoryService, runtime.EquipmentService, runtime.QuestService);
+            combatService = new CombatService(runtime.State, runtime.InventoryService, runtime.EquipmentService, runtime.QuestService, runtime.TalentService);
             combatView = CombatView.Create(runtime, combatService);
             CombatHudScreen.Build(runtime, combatService, () => combatView.IsPlayerNearTree(combatService.PlayerPosition), () => isAutoMode, ToggleAutoMode, CanManualAction, PerformManualAction);
             combatService.EnemyDefeated += OnEnemyDefeated;
@@ -97,7 +97,7 @@ namespace IdleOnLike.Combat
                 }
 
                 runtime.GatheringService.GatherOnce(combatView.IsPlayerNearTree(combatService.PlayerPosition));
-                nextManualActionTime = Time.time + 2f;
+                nextManualActionTime = Time.time + runtime.SkillTreeService.GetGatherSeconds(SkillType.Chopping, 2f);
                 return;
             }
 

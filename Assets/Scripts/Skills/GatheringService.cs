@@ -1,6 +1,7 @@
 using System;
 using IdleOnLike.Data;
 using IdleOnLike.Inventory;
+using IdleOnLike.Progression;
 using IdleOnLike.Quests;
 using IdleOnLike.Save;
 
@@ -16,14 +17,17 @@ namespace IdleOnLike.Skills
         private readonly PlayerSaveData saveData;
         private readonly InventoryService inventoryService;
         private readonly QuestService questService;
+        private readonly SkillTreeService skillTreeService;
+        private readonly System.Random random = new System.Random();
 
         private float gatherTimer;
 
-        public GatheringService(PlayerSaveData saveData, InventoryService inventoryService, QuestService questService)
+        public GatheringService(PlayerSaveData saveData, InventoryService inventoryService, QuestService questService, SkillTreeService skillTreeService)
         {
             this.saveData = saveData;
             this.inventoryService = inventoryService;
             this.questService = questService;
+            this.skillTreeService = skillTreeService;
             this.saveData.EnsureCollections();
         }
 
@@ -78,12 +82,13 @@ namespace IdleOnLike.Skills
             }
 
             gatherTimer += deltaTime;
-            if (gatherTimer < 2f)
+            var gatherSeconds = GetCurrentGatherSeconds();
+            if (gatherTimer < gatherSeconds)
             {
                 return;
             }
 
-            gatherTimer -= 2f;
+            gatherTimer -= gatherSeconds;
             GatherCurrentResource();
         }
 
@@ -115,10 +120,29 @@ namespace IdleOnLike.Skills
                 return;
             }
 
-            inventoryService.AddItem(itemId, 1);
+            var skillType = IsMining ? SkillType.Mining : SkillType.Chopping;
+            var quantity = 1;
+            if (random.NextDouble() < skillTreeService.GetExtraDropChance(skillType))
+            {
+                quantity++;
+            }
+
+            inventoryService.AddItem(itemId, quantity);
             questService.AddProgress(QuestObjectiveType.GatherResource, nodeId, 1);
-            LogAdded?.Invoke($"{actionLabel} {itemName} x1.");
+            var levels = skillTreeService.AddSkillExperience(skillType, 5);
+            LogAdded?.Invoke($"{actionLabel} {itemName} x{quantity}.");
+            if (levels > 0)
+            {
+                LogAdded?.Invoke($"{skillType} leveled up. Skill point +{levels}.");
+            }
+
             Changed?.Invoke();
+        }
+
+        private float GetCurrentGatherSeconds()
+        {
+            var skillType = IsMining ? SkillType.Mining : SkillType.Chopping;
+            return skillTreeService.GetGatherSeconds(skillType, 2f);
         }
 
         private static bool TryGetNode(string nodeId, out ZoneActivity activity, out string itemId, out string itemName, out string actionLabel)

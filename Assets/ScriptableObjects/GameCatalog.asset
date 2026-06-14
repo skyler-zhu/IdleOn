@@ -39,6 +39,15 @@ MonoBehaviour:
   skills:
   - {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}
   - {fileID: 11400000, guid: dc6e0b00840a44779ccf354ad192170a, type: 2}
+  talents:
+  - {fileID: 11400000, guid: 1d8935aeba0547ddad7e9405c76e0890, type: 2}
+  - {fileID: 11400000, guid: 5c7f8839dc7446b99f978e4a78c929ed, type: 2}
+  - {fileID: 11400000, guid: 66049516d1dc426ca68d732254ac88f6, type: 2}
+  skillNodes:
+  - {fileID: 11400000, guid: ac515e2f37d54b77b4574266d978b928, type: 2}
+  - {fileID: 11400000, guid: 27eb3915c5f04dbd8a36321c50fdc94f, type: 2}
+  - {fileID: 11400000, guid: 0d50c5d3123849a8918ce832fc2fa324, type: 2}
+  - {fileID: 11400000, guid: a612f2835db846478e987eb42fdf3bc3, type: 2}
   zones:
   - {fileID: 11400000, guid: 24ea7f044b07f994f8349afbd4e34a0b, type: 2}
   - {fileID: 11400000, guid: 6cbaee616eb8fb3449c1c5b8aeedf1ff, type: 2}
