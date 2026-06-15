@@ -24,6 +24,8 @@ namespace IdleOnLike.UI
             var closeButton = RuntimeUiFactory.CreateButton(root, "Close Button", "Close", new Color(0.25f, 0.36f, 0.55f, 1f));
             RuntimeUiFactory.SetRect(closeButton.GetComponent<RectTransform>(), new Vector2(0.34f, 0.06f), new Vector2(0.66f, 0.15f), Vector2.zero, Vector2.zero);
             closeButton.onClick.AddListener(() => Object.Destroy(canvas.gameObject));
+            RuntimeUiOverlayRegistry.Register(root);
+            RuntimeUiOverlayRegistry.Show(root);
         }
 
         private static string BuildText(OfflineGainsResult result)

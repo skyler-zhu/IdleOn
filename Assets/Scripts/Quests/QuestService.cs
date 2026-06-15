@@ -131,6 +131,12 @@ namespace IdleOnLike.Quests
 
         public int GetObjectiveProgress(string questId, int objectiveIndex)
         {
+            var quest = state.Catalog.FindQuest(questId);
+            if (quest != null)
+            {
+                ApplyCurrentCharacterProgress(quest);
+            }
+
             var progress = GetProgressEntry(questId, objectiveIndex, false);
             return progress != null ? progress.currentAmount : 0;
         }
@@ -180,6 +186,7 @@ namespace IdleOnLike.Quests
                 return false;
             }
 
+            ApplyCurrentCharacterProgress(quest);
             for (var i = 0; i < quest.Objectives.Count; i++)
             {
                 if (GetObjectiveProgress(questId, i) < quest.Objectives[i].requiredAmount)
@@ -286,23 +293,80 @@ namespace IdleOnLike.Quests
             for (var i = 0; i < quest.Objectives.Count; i++)
             {
                 var objective = quest.Objectives[i];
-                if (objective.objectiveType != QuestObjectiveType.SwitchCharacter)
+                if (objective.objectiveType == QuestObjectiveType.SwitchCharacter)
                 {
+                    if (!string.IsNullOrEmpty(objective.targetId) && objective.targetId != switchedToCharacterId)
+                    {
+                        continue;
+                    }
+
+                    changed |= SetObjectiveProgressAtLeast(quest.Id, i, objective.requiredAmount, 1);
                     continue;
                 }
 
-                if (!string.IsNullOrEmpty(objective.targetId) && objective.targetId != switchedToCharacterId)
-                {
-                    continue;
-                }
-
-                var progress = GetProgressEntry(quest.Id, i, true);
-                var previous = progress.currentAmount;
-                progress.currentAmount = Math.Min(objective.requiredAmount, progress.currentAmount + 1);
-                changed |= previous != progress.currentAmount;
+                changed |= ApplyCurrentItemProgress(quest.Id, i, objective);
             }
 
             return changed;
+        }
+
+        private bool ApplyCurrentItemProgress(string questId, int objectiveIndex, QuestObjectiveDefinition objective)
+        {
+            if (objective == null || string.IsNullOrEmpty(objective.targetId))
+            {
+                return false;
+            }
+
+            var amount = 0;
+            switch (objective.objectiveType)
+            {
+                case QuestObjectiveType.CollectItem:
+                    amount = Math.Max(inventoryService.GetQuantity(objective.targetId), state.SaveData.GetItemAcquisitionCount(objective.targetId));
+                    break;
+                case QuestObjectiveType.CraftItem:
+                    amount = Math.Max(state.SaveData.GetCraftedItemCount(objective.targetId), GetOwnedOrEquippedQuantity(objective.targetId));
+                    break;
+                case QuestObjectiveType.EquipItem:
+                    amount = IsEquipped(objective.targetId) ? objective.requiredAmount : 0;
+                    break;
+            }
+
+            return amount > 0 && SetObjectiveProgressAtLeast(questId, objectiveIndex, objective.requiredAmount, amount);
+        }
+
+        private bool SetObjectiveProgressAtLeast(string questId, int objectiveIndex, int requiredAmount, int amount)
+        {
+            var progress = GetProgressEntry(questId, objectiveIndex, true);
+            var previous = progress.currentAmount;
+            progress.currentAmount = Math.Min(requiredAmount, Math.Max(progress.currentAmount, amount));
+            return previous != progress.currentAmount;
+        }
+
+        private int GetOwnedOrEquippedQuantity(string itemId)
+        {
+            var quantity = inventoryService.GetQuantity(itemId);
+            foreach (var slot in state.SaveData.equipment)
+            {
+                if (slot != null && slot.itemId == itemId)
+                {
+                    quantity++;
+                }
+            }
+
+            return quantity;
+        }
+
+        private bool IsEquipped(string itemId)
+        {
+            foreach (var slot in state.SaveData.equipment)
+            {
+                if (slot != null && slot.itemId == itemId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool HasSwitchCharacterObjective(QuestDefinition quest)

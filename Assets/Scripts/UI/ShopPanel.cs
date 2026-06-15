@@ -1,5 +1,6 @@
 using IdleOnLike.Core;
 using IdleOnLike.Data;
+using IdleOnLike.Inventory;
 using IdleOnLike.Shop;
 using UnityEngine;
 
@@ -7,9 +8,14 @@ namespace IdleOnLike.UI
 {
     public sealed class ShopPanel
     {
-        private const string DuctTapeItemId = "duct_tape";
+        private static readonly string[] BuyItemIds =
+        {
+            "duct_tape",
+            "scrap_metal"
+        };
 
         private readonly GameRuntime runtime;
+        private readonly InventoryService inventoryService;
         private readonly ShopService shopService;
         private readonly RectTransform root;
         private readonly RectTransform buyList;
@@ -19,6 +25,7 @@ namespace IdleOnLike.UI
         public ShopPanel(GameRuntime runtime, Transform parent)
         {
             this.runtime = runtime;
+            inventoryService = runtime.InventoryService;
             shopService = runtime.ShopService;
             root = RuntimeUiFactory.CreatePanel(parent, "Shop Panel", new Vector2(0.18f, 0.14f), new Vector2(0.82f, 0.80f), Vector2.zero, Vector2.zero, new Color(0.06f, 0.07f, 0.08f, 0.96f));
 
@@ -34,29 +41,31 @@ namespace IdleOnLike.UI
             var sellHeader = RuntimeUiFactory.CreateText(root, "Sell Header", "Sell", 22, TextAnchor.MiddleLeft, Color.white);
             RuntimeUiFactory.SetRect(sellHeader.rectTransform, new Vector2(0.54f, 0.80f), new Vector2(0.94f, 0.88f), Vector2.zero, Vector2.zero);
 
-            buyList = RuntimeUiFactory.CreatePanel(root, "Buy List", new Vector2(0.05f, 0.08f), new Vector2(0.48f, 0.80f), Vector2.zero, Vector2.zero, new Color(0.11f, 0.12f, 0.14f, 1f));
-            sellList = RuntimeUiFactory.CreatePanel(root, "Sell List", new Vector2(0.52f, 0.08f), new Vector2(0.95f, 0.80f), Vector2.zero, Vector2.zero, new Color(0.11f, 0.12f, 0.14f, 1f));
+            buyList = RuntimeUiFactory.CreateScrollContent(root, "Buy List", new Vector2(0.05f, 0.08f), new Vector2(0.48f, 0.80f), new Color(0.11f, 0.12f, 0.14f, 1f));
+            sellList = RuntimeUiFactory.CreateScrollContent(root, "Sell List", new Vector2(0.52f, 0.08f), new Vector2(0.95f, 0.80f), new Color(0.11f, 0.12f, 0.14f, 1f));
 
-            runtime.InventoryService.Changed += Refresh;
+            inventoryService.Changed += Refresh;
             shopService.Changed += Refresh;
             parent.GetComponentInParent<RuntimeUiLifetime>()?.Register(Dispose);
 
             root.gameObject.SetActive(false);
+            RuntimeUiOverlayRegistry.Register(root, Refresh);
             Refresh();
         }
 
         public void Toggle()
         {
-            root.gameObject.SetActive(!root.gameObject.activeSelf);
-            if (root.gameObject.activeSelf)
+            if (isDisposed || root == null)
             {
-                Refresh();
+                return;
             }
+
+            RuntimeUiOverlayRegistry.Toggle(root, Refresh);
         }
 
         private void Refresh()
         {
-            if (isDisposed || runtime == null || runtime.State == null || buyList == null || sellList == null)
+            if (isDisposed || root == null || runtime == null || runtime.State == null || buyList == null || sellList == null)
             {
                 Dispose();
                 return;
@@ -64,8 +73,14 @@ namespace IdleOnLike.UI
 
             Clear(buyList);
             Clear(sellList);
-            BuildBuyRow(runtime.Catalog.FindItem(DuctTapeItemId), 0);
-            BuildSellRows();
+            for (var i = 0; i < BuyItemIds.Length; i++)
+            {
+                BuildBuyRow(runtime.Catalog.FindItem(BuyItemIds[i]), i);
+            }
+
+            RuntimeUiFactory.SetScrollContentHeight(buyList, 24f + BuyItemIds.Length * 76f);
+            var sellRows = BuildSellRows();
+            RuntimeUiFactory.SetScrollContentHeight(sellList, 24f + sellRows * 76f);
         }
 
         private void BuildBuyRow(ItemDefinition item, int index)
@@ -93,7 +108,7 @@ namespace IdleOnLike.UI
             });
         }
 
-        private void BuildSellRows()
+        private int BuildSellRows()
         {
             var index = 0;
             runtime.State.AccountData.EnsureCollections();
@@ -121,6 +136,8 @@ namespace IdleOnLike.UI
                     }
                 });
             }
+
+            return index;
         }
 
         private static RectTransform CreateRow(Transform parent, string name, int index)
@@ -145,9 +162,9 @@ namespace IdleOnLike.UI
             }
 
             isDisposed = true;
-            if (runtime != null)
+            if (inventoryService != null)
             {
-                runtime.InventoryService.Changed -= Refresh;
+                inventoryService.Changed -= Refresh;
             }
 
             if (shopService != null)

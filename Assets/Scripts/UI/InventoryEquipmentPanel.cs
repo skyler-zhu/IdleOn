@@ -45,8 +45,8 @@ namespace IdleOnLike.UI
             var equipmentHeader = RuntimeUiFactory.CreateText(root, "Equipment Header", "Equipment", 23, TextAnchor.MiddleLeft, Color.white);
             RuntimeUiFactory.SetRect(equipmentHeader.rectTransform, new Vector2(0.56f, 0.82f), new Vector2(0.95f, 0.89f), Vector2.zero, Vector2.zero);
 
-            inventoryList = RuntimeUiFactory.CreatePanel(root, "Inventory List", new Vector2(0.04f, 0.06f), new Vector2(0.50f, 0.82f), Vector2.zero, Vector2.zero, new Color(0.11f, 0.12f, 0.14f, 1f));
-            equipmentList = RuntimeUiFactory.CreatePanel(root, "Equipment List", new Vector2(0.54f, 0.06f), new Vector2(0.96f, 0.82f), Vector2.zero, Vector2.zero, new Color(0.11f, 0.12f, 0.14f, 1f));
+            inventoryList = RuntimeUiFactory.CreateScrollContent(root, "Inventory List", new Vector2(0.04f, 0.06f), new Vector2(0.50f, 0.82f), new Color(0.11f, 0.12f, 0.14f, 1f));
+            equipmentList = RuntimeUiFactory.CreateScrollContent(root, "Equipment List", new Vector2(0.54f, 0.06f), new Vector2(0.96f, 0.82f), new Color(0.11f, 0.12f, 0.14f, 1f));
 
             inventoryService.Changed += Refresh;
             equipmentService.Changed += Refresh;
@@ -58,16 +58,13 @@ namespace IdleOnLike.UI
             }
 
             root.gameObject.SetActive(false);
+            RuntimeUiOverlayRegistry.Register(root, Refresh);
             Refresh();
         }
 
         public void Toggle()
         {
-            root.gameObject.SetActive(!root.gameObject.activeSelf);
-            if (root.gameObject.activeSelf)
-            {
-                Refresh();
-            }
+            RuntimeUiOverlayRegistry.Toggle(root, Refresh);
         }
 
         private void Refresh()
@@ -92,11 +89,13 @@ namespace IdleOnLike.UI
 
             if (inventory.Count == 0)
             {
-                var empty = RuntimeUiFactory.CreateText(inventoryList, "Empty Inventory", "No items yet. Go Forest and fight for drops.", 18, TextAnchor.UpperLeft, new Color(0.78f, 0.82f, 0.88f));
+                var empty = RuntimeUiFactory.CreateText(inventoryList, "Empty Inventory", "Inventory is empty.", 18, TextAnchor.UpperLeft, new Color(0.78f, 0.82f, 0.88f));
                 RuntimeUiFactory.Stretch(empty.rectTransform, new Vector2(18f, 18f), new Vector2(-18f, -18f));
+                RuntimeUiFactory.SetScrollContentHeight(inventoryList, 120f);
                 return;
             }
 
+            var rowIndex = 0;
             for (var i = 0; i < inventory.Count; i++)
             {
                 var stack = inventory[i];
@@ -106,7 +105,7 @@ namespace IdleOnLike.UI
                     continue;
                 }
 
-                var row = CreateRow(inventoryList, $"Item Row {i}", i, 58f);
+                var row = CreateRow(inventoryList, $"Item Row {i}", rowIndex, 58f);
                 AddItemIcon(row, item);
 
                 var label = RuntimeUiFactory.CreateText(row, "Item Label", $"{item.DisplayName} x{stack.quantity}", 18, TextAnchor.MiddleLeft, Color.white);
@@ -126,7 +125,11 @@ namespace IdleOnLike.UI
                         }
                     });
                 }
+
+                rowIndex++;
             }
+
+            RuntimeUiFactory.SetScrollContentHeight(inventoryList, 24f + rowIndex * 66f);
         }
 
         private void BuildEquipment()
@@ -166,7 +169,8 @@ namespace IdleOnLike.UI
             }
 
             var attackBonus = RuntimeUiFactory.CreateText(equipmentList, "Attack Bonus", $"Equipment Attack: +{equipmentService.GetAttackBonus()}", 18, TextAnchor.MiddleLeft, new Color(0.82f, 0.90f, 1f));
-            RuntimeUiFactory.SetRect(attackBonus.rectTransform, new Vector2(0.04f, 0.02f), new Vector2(0.96f, 0.12f), Vector2.zero, Vector2.zero);
+            RuntimeUiFactory.SetRect(attackBonus.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(20f, -408f), new Vector2(-20f, -352f));
+            RuntimeUiFactory.SetScrollContentHeight(equipmentList, 430f);
         }
 
         private static RectTransform CreateRow(Transform parent, string name, int index, float rowHeight)

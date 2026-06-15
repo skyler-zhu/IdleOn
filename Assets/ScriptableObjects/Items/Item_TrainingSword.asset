@@ -15,7 +15,7 @@ MonoBehaviour:
   id: training_sword
   displayName: Training Sword
   description: A starter weapon for the first combat loop.
-  icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
+  icon: {fileID: 21300000, guid: 8f21030d26f9bff49a688fbe1e59254e, type: 3}
   worldSprite: {fileID: 0}
   worldDropPrefab: {fileID: 0}
   itemType: 2

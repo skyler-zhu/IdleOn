@@ -6,6 +6,7 @@ using IdleOnLike.Equipment;
 using IdleOnLike.Inventory;
 using IdleOnLike.Progression;
 using IdleOnLike.Quests;
+using IdleOnLike.Save;
 using UnityEngine;
 
 namespace IdleOnLike.Combat
@@ -13,18 +14,25 @@ namespace IdleOnLike.Combat
     public sealed class CombatService
     {
         private const float ContactDistance = 1.2f;
-        private const float MeleeAttackRange = 2.15f;
+        private const float MeleeAttackRange = 1.5f;
         private const float DesiredMeleeDistance = 1.55f;
         private const float PlayerMoveSpeed = 1.65f;
         private const float EnemyWanderSpeed = 0.58f;
+        private const float StoneChaseSpeed = 0.82f;
         private const float EnemyWanderRadius = 1.05f;
-        private const float EnemyVerticalWanderRadius = 0.08f;
+        private const float MinimumSpawnDistanceFromPlayer = 2.4f;
+        private const float MinimumSpawnDistanceFromEnemy = 1.15f;
         private const float ManualMoveMinX = -6.3f;
         private const float ManualMoveMaxX = 6.3f;
         private const float JumpDuration = 0.72f;
+        private const float AttackLockSeconds = 0.5f;
         private const float ClimbSeconds = 1.2f;
         private const float RopeX = 0.15f;
+        private const float EnemyLowerFloorY = -1.35f;
+        private const float StoneRespawnSeconds = 3600f;
         private static readonly Vector3 PlayerPositionValue = new Vector3(5.45f, -1.35f, 0f);
+        private static readonly Vector3 ForestStonePortalReturnPosition = new Vector3(-5.25f, -1.35f, 0f);
+        private static readonly Vector3 StoneSpawnPosition = new Vector3(-4.35f, -1.35f, 0f);
         private static readonly Vector3 LowerRopePoint = new Vector3(RopeX, -1.35f, 0f);
         private static readonly Vector3 UpperRopePoint = new Vector3(RopeX, 1.15f, 0f);
         private static readonly Vector3 TreeGatherPosition = new Vector3(-4.95f, 1.15f, 0f);
@@ -45,8 +53,9 @@ namespace IdleOnLike.Combat
         private float climbElapsedSeconds;
         private Vector3 climbStartPosition;
         private Vector3 climbEndPosition;
-        private float restRemainingSeconds;
+        private float deathRemainingSeconds;
         private float jumpRemainingSeconds;
+        private float attackLockRemainingSeconds;
 
         public CombatService(GameState state, InventoryService inventoryService, EquipmentService equipmentService, QuestService questService, TalentService talentService)
         {
@@ -69,13 +78,14 @@ namespace IdleOnLike.Combat
         public int PlayerDamage => 5 + state.SaveData.level * 2 + equipmentService.GetAttackBonus() + talentService.GetDamageBonus();
         public int MaxPlayerHp => 50 + state.SaveData.level * 10 + talentService.GetMaxHpBonus();
         public int ExperienceRequired => ProgressionService.GetExperienceRequired(state.SaveData.level);
-        public bool IsResting => restRemainingSeconds > 0f;
+        public bool IsResting => deathRemainingSeconds > 0f;
         public bool IsPlayerNearTree => Vector3.Distance(playerPosition, TreeGatherPosition) <= 0.85f;
         public bool IsUpperFloor => upperFloor;
         public bool IsClimbing => isClimbing;
         public bool IsNearRope => Mathf.Abs(playerPosition.x - RopeX) <= 0.75f;
         public bool IsJumping => jumpRemainingSeconds > 0f;
         public float JumpProgress => IsJumping ? Mathf.Clamp01(1f - jumpRemainingSeconds / JumpDuration) : 0f;
+        public bool IsStoneZone => state.CurrentZone != null && state.CurrentZone.Id == "stone_sanctum";
 
         public event Action Changed;
         public event Action<string> LogAdded;
@@ -86,10 +96,51 @@ namespace IdleOnLike.Combat
         public event Action PlayerDamaged;
         public event Action PlayerRestStarted;
         public event Action PlayerRestEnded;
+        public event Action PlayerDied;
+
+        public void SpawnAtForestStonePortal()
+        {
+            if (IsStoneZone)
+            {
+                return;
+            }
+
+            playerPosition = ForestStonePortalReturnPosition;
+            upperFloor = false;
+            isClimbing = false;
+            jumpRemainingSeconds = 0f;
+            attackLockRemainingSeconds = 0f;
+            facingSign = 1;
+            NotifyChanged();
+        }
+
+        public void SpawnAtTree()
+        {
+            if (IsStoneZone)
+            {
+                return;
+            }
+
+            playerPosition = TreeGatherPosition + new Vector3(0.45f, 0f, 0f);
+            upperFloor = true;
+            isClimbing = false;
+            jumpRemainingSeconds = 0f;
+            attackLockRemainingSeconds = 0f;
+            FaceToward(TreeGatherPosition.x);
+            NotifyChanged();
+        }
 
         public void SpawnInitialEnemies(int count)
         {
             enemies.Clear();
+            if (IsStoneZone && !IsStoneRespawnReady())
+            {
+                AddLog(GetStoneRespawnMessage());
+                SelectCurrentTarget();
+                NotifyChanged();
+                return;
+            }
+
             for (var i = 0; i < count; i++)
             {
                 SpawnEnemyAtIndex(i, null);
@@ -101,6 +152,13 @@ namespace IdleOnLike.Combat
 
         public CombatEnemyInstance ReplaceEnemy(CombatEnemyInstance previousEnemy)
         {
+            if (IsStoneZone && !IsStoneRespawnReady())
+            {
+                SelectCurrentTarget();
+                NotifyChanged();
+                return null;
+            }
+
             var index = enemies.IndexOf(previousEnemy);
             if (index < 0)
             {
@@ -114,7 +172,7 @@ namespace IdleOnLike.Combat
         {
             if (IsResting || IsClimbing)
             {
-                AddLog("Resting...");
+                AddLog("Character incapacitated.");
                 NotifyChanged();
                 return false;
             }
@@ -130,6 +188,7 @@ namespace IdleOnLike.Combat
 
             FaceToward(CurrentTarget.currentPosition.x);
             state.SaveData.currentActivity = ZoneActivity.Fighting.ToString();
+            attackLockRemainingSeconds = AttackLockSeconds;
             if (Vector3.Distance(PlayerPosition, CurrentTarget.currentPosition) > MeleeAttackRange)
             {
                 PlayerAttacked?.Invoke();
@@ -151,10 +210,26 @@ namespace IdleOnLike.Combat
 
             AwardEnemyRewards(CurrentTarget.enemyDefinition);
             questService.AddProgress(QuestObjectiveType.KillEnemy, CurrentTarget.enemyDefinition.Id, 1);
+            if (IsStoneZone)
+            {
+                MarkStoneDefeated();
+            }
+
             EnemyDefeated?.Invoke(CurrentTarget);
             SelectCurrentTarget();
             NotifyChanged();
             return true;
+        }
+
+        public bool CanAttackCurrentTargetInRange()
+        {
+            if (IsResting || IsClimbing)
+            {
+                return false;
+            }
+
+            SelectCurrentTarget();
+            return CurrentTarget != null && Vector3.Distance(PlayerPosition, CurrentTarget.currentPosition) <= MeleeAttackRange;
         }
 
         public void Tick(float deltaTime, float time, bool fightingActive, bool choppingActive, bool autoMode)
@@ -176,13 +251,18 @@ namespace IdleOnLike.Combat
                 }
             }
 
+            if (attackLockRemainingSeconds > 0f)
+            {
+                attackLockRemainingSeconds = Mathf.Max(0f, attackLockRemainingSeconds - deltaTime);
+            }
+
             if (IsResting)
             {
-                restRemainingSeconds -= deltaTime;
-                if (restRemainingSeconds <= 0f)
+                deathRemainingSeconds -= deltaTime;
+                if (deathRemainingSeconds <= 0f)
                 {
-                    state.SaveData.currentHp = MaxPlayerHp;
-                    AddLog("Rested up. Back to work.");
+                    state.SaveData.currentHp = Mathf.Max(1, state.SaveData.currentHp);
+                    AddLog("Returned to the village.");
                     PlayerRestEnded?.Invoke();
                     NotifyChanged();
                 }
@@ -190,11 +270,11 @@ namespace IdleOnLike.Combat
                 return;
             }
 
-            if (autoMode && fightingActive)
+            if (attackLockRemainingSeconds <= 0f && autoMode && fightingActive)
             {
                 MovePlayerTowardTarget(deltaTime);
             }
-            else if (autoMode && choppingActive)
+            else if (attackLockRemainingSeconds <= 0f && autoMode && choppingActive)
             {
                 MovePlayerTowardTree(deltaTime);
             }
@@ -206,7 +286,14 @@ namespace IdleOnLike.Combat
                     continue;
                 }
 
-                WanderEnemy(enemy, deltaTime, time);
+                if (IsStoneZone)
+                {
+                    MoveStoneTowardPlayer(enemy, deltaTime);
+                }
+                else
+                {
+                    WanderEnemy(enemy, deltaTime, time);
+                }
 
                 if (fightingActive && !IsJumping && Vector3.Distance(enemy.currentPosition, PlayerPosition) <= ContactDistance && time >= enemy.nextAttackTime)
                 {
@@ -215,13 +302,18 @@ namespace IdleOnLike.Combat
                 }
             }
 
+            if (IsStoneZone && enemies.TrueForAll(enemy => enemy == null || !enemy.IsAlive) && IsStoneRespawnReady())
+            {
+                SpawnEnemyAtIndex(0, enemies.Count > 0 ? enemies[0] : null);
+            }
+
             SelectCurrentTarget();
             NotifyChanged();
         }
 
         public void MovePlayerManual(float horizontal, float deltaTime)
         {
-            if (Mathf.Abs(horizontal) <= 0.01f || IsResting || IsClimbing)
+            if (Mathf.Abs(horizontal) <= 0.01f || IsResting || IsClimbing || attackLockRemainingSeconds > 0f)
             {
                 return;
             }
@@ -233,7 +325,7 @@ namespace IdleOnLike.Combat
 
         public void Jump()
         {
-            if (IsResting || IsJumping || IsClimbing)
+            if (IsResting || IsJumping || IsClimbing || attackLockRemainingSeconds > 0f)
             {
                 return;
             }
@@ -364,15 +456,28 @@ namespace IdleOnLike.Combat
                 return;
             }
 
-            enemy.currentPosition += Vector3.right * amount;
+            var direction = enemy.currentPosition.x >= playerPosition.x ? 1f : -1f;
+            enemy.currentPosition.x += direction * amount;
+            enemy.currentPosition.y = enemy.spawnPosition.y;
         }
 
         private void WanderEnemy(CombatEnemyInstance enemy, float deltaTime, float time)
         {
             var offsetX = Mathf.Sin(time * 0.9f + enemy.spawnPosition.x) * EnemyWanderRadius;
-            var offsetY = Mathf.Cos(time * 0.7f + enemy.spawnPosition.y) * EnemyVerticalWanderRadius;
-            var target = enemy.spawnPosition + new Vector3(offsetX, offsetY, 0f);
-            enemy.currentPosition = Vector3.MoveTowards(enemy.currentPosition, target, EnemyWanderSpeed * deltaTime);
+            var targetX = enemy.spawnPosition.x + offsetX;
+            enemy.currentPosition.x = Mathf.MoveTowards(enemy.currentPosition.x, targetX, EnemyWanderSpeed * deltaTime);
+            enemy.currentPosition.y = enemy.spawnPosition.y;
+        }
+
+        private void MoveStoneTowardPlayer(CombatEnemyInstance enemy, float deltaTime)
+        {
+            if (enemy == null || !enemy.IsAlive)
+            {
+                return;
+            }
+
+            enemy.currentPosition.x = Mathf.MoveTowards(enemy.currentPosition.x, playerPosition.x, StoneChaseSpeed * deltaTime);
+            enemy.currentPosition.y = StoneSpawnPosition.y;
         }
 
         private CombatEnemyInstance SpawnEnemyAtIndex(int index, CombatEnemyInstance replace)
@@ -384,7 +489,7 @@ namespace IdleOnLike.Combat
                 return null;
             }
 
-            var spawnPosition = GetSpawnPosition(index);
+            var spawnPosition = IsStoneZone ? StoneSpawnPosition : GetSpawnPosition(index);
             var enemy = replace ?? new CombatEnemyInstance();
             enemy.enemyDefinition = definition;
             enemy.currentHp = definition.MaxHp;
@@ -404,8 +509,77 @@ namespace IdleOnLike.Combat
 
         private Vector3 GetSpawnPosition(int index)
         {
-            var row = index % 3;
-            return new Vector3(-3.75f + row * 1.55f, -1.35f + row * 0.06f, 0f);
+            var candidates = new[]
+            {
+                new Vector3(-5.25f, EnemyLowerFloorY, 0f),
+                new Vector3(-3.75f, EnemyLowerFloorY, 0f),
+                new Vector3(-2.20f, EnemyLowerFloorY, 0f),
+                new Vector3(-0.65f, EnemyLowerFloorY, 0f),
+                new Vector3(1.10f, EnemyLowerFloorY, 0f),
+                new Vector3(2.85f, EnemyLowerFloorY, 0f)
+            };
+
+            var start = Mathf.Abs(index) % candidates.Length;
+            var best = candidates[start];
+            var bestScore = GetSpawnScore(best);
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                var candidate = candidates[(start + i) % candidates.Length];
+                var distance = Vector3.Distance(PlayerPosition, candidate);
+                var score = GetSpawnScore(candidate);
+                if (distance >= MinimumSpawnDistanceFromPlayer && IsFarFromLivingEnemies(candidate))
+                {
+                    return candidate;
+                }
+
+                if (score > bestScore)
+                {
+                    best = candidate;
+                    bestScore = score;
+                }
+            }
+
+            return best;
+        }
+
+        private float GetSpawnScore(Vector3 position)
+        {
+            var playerDistance = Vector3.Distance(PlayerPosition, position);
+            var nearestEnemyDistance = float.MaxValue;
+            foreach (var enemy in enemies)
+            {
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                nearestEnemyDistance = Mathf.Min(nearestEnemyDistance, Vector3.Distance(enemy.currentPosition, position));
+            }
+
+            if (nearestEnemyDistance == float.MaxValue)
+            {
+                nearestEnemyDistance = MinimumSpawnDistanceFromEnemy;
+            }
+
+            return playerDistance + nearestEnemyDistance * 0.5f;
+        }
+
+        private bool IsFarFromLivingEnemies(Vector3 position)
+        {
+            foreach (var enemy in enemies)
+            {
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                if (Vector3.Distance(enemy.currentPosition, position) < MinimumSpawnDistanceFromEnemy)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void SelectCurrentTarget()
@@ -470,6 +644,60 @@ namespace IdleOnLike.Combat
             return validSpawns[validSpawns.Count - 1].enemy;
         }
 
+        private bool IsStoneRespawnReady()
+        {
+            var cooldown = GetWorldCooldown("stone_sanctum_stone");
+            if (cooldown == null || string.IsNullOrEmpty(cooldown.lastCompletedUtc))
+            {
+                return true;
+            }
+
+            return DateTime.TryParse(cooldown.lastCompletedUtc, out var defeatedUtc)
+                && DateTime.UtcNow - defeatedUtc.ToUniversalTime() >= TimeSpan.FromSeconds(StoneRespawnSeconds);
+        }
+
+        private string GetStoneRespawnMessage()
+        {
+            var cooldown = GetWorldCooldown("stone_sanctum_stone");
+            if (cooldown == null || !DateTime.TryParse(cooldown.lastCompletedUtc, out var defeatedUtc))
+            {
+                return "The Stone Idol is dormant.";
+            }
+
+            var remaining = TimeSpan.FromSeconds(StoneRespawnSeconds) - (DateTime.UtcNow - defeatedUtc.ToUniversalTime());
+            if (remaining < TimeSpan.Zero)
+            {
+                remaining = TimeSpan.Zero;
+            }
+
+            return $"The Stone Idol reforms in {Mathf.CeilToInt((float)remaining.TotalMinutes)} min.";
+        }
+
+        private void MarkStoneDefeated()
+        {
+            var cooldown = GetOrCreateWorldCooldown("stone_sanctum_stone");
+            cooldown.lastCompletedUtc = DateTime.UtcNow.ToString("O");
+        }
+
+        private SaveWorldCooldown GetWorldCooldown(string id)
+        {
+            state.SaveData.EnsureCollections();
+            return state.SaveData.worldCooldowns.Find(entry => entry != null && entry.id == id);
+        }
+
+        private SaveWorldCooldown GetOrCreateWorldCooldown(string id)
+        {
+            var cooldown = GetWorldCooldown(id);
+            if (cooldown != null)
+            {
+                return cooldown;
+            }
+
+            cooldown = new SaveWorldCooldown { id = id };
+            state.SaveData.worldCooldowns.Add(cooldown);
+            return cooldown;
+        }
+
         private void DamagePlayer(int damage, string enemyName)
         {
             if (random.NextDouble() < talentService.GetDodgeChance())
@@ -485,9 +713,10 @@ namespace IdleOnLike.Combat
 
             if (state.SaveData.currentHp <= 0)
             {
-                restRemainingSeconds = 3f;
-                AddLog("You are resting for 3 seconds.");
+                deathRemainingSeconds = 1f;
+                AddLog("Character incapacitated.");
                 PlayerRestStarted?.Invoke();
+                PlayerDied?.Invoke();
             }
         }
 

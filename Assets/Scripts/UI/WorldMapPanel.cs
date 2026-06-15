@@ -33,6 +33,7 @@ namespace IdleOnLike.UI
 
             pointLayer = RuntimeUiFactory.CreatePanel(backdrop, "Point Layer", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Color(0f, 0f, 0f, 0f));
             root.gameObject.SetActive(false);
+            RuntimeUiOverlayRegistry.Register(root, Refresh);
         }
 
         public void Toggle()
@@ -43,11 +44,13 @@ namespace IdleOnLike.UI
             }
 
             var show = !root.gameObject.activeSelf;
-            root.gameObject.SetActive(show);
             if (show)
             {
-                Refresh();
+                RuntimeUiOverlayRegistry.Show(root, Refresh);
+                return;
             }
+
+            root.gameObject.SetActive(false);
         }
 
         public void Hide()
@@ -102,17 +105,7 @@ namespace IdleOnLike.UI
 
         private bool IsZoneUnlocked(ZoneDefinition zone)
         {
-            if (runtime.State == null)
-            {
-                return false;
-            }
-
-            if (zone.RequiredCharacterLevel > 0 && runtime.State.SaveData.level < zone.RequiredCharacterLevel)
-            {
-                return false;
-            }
-
-            return zone.RequiredQuest == null || runtime.QuestService.IsQuestCompleted(zone.RequiredQuest.Id);
+            return runtime.IsZoneUnlocked(zone);
         }
 
         private string GetUnlockText(ZoneDefinition zone, bool unlocked, bool current)

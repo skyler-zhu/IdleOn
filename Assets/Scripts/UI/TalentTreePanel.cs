@@ -31,20 +31,17 @@ namespace IdleOnLike.UI
             pointsText = RuntimeUiFactory.CreateText(pointsBar, "Talent Points Text", string.Empty, 22, TextAnchor.MiddleLeft, new Color(1f, 0.94f, 0.62f));
             RuntimeUiFactory.Stretch(pointsText.rectTransform, new Vector2(18f, 0f), new Vector2(-18f, 0f));
 
-            listRoot = RuntimeUiFactory.CreatePanel(root, "Talent List", new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.78f), Vector2.zero, Vector2.zero, new Color(0.11f, 0.12f, 0.14f, 1f));
+            listRoot = RuntimeUiFactory.CreateScrollContent(root, "Talent List", new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.78f), new Color(0.11f, 0.12f, 0.14f, 1f));
             talentService.Changed += Refresh;
             parent.GetComponentInParent<RuntimeUiLifetime>()?.Register(Dispose);
             root.gameObject.SetActive(false);
+            RuntimeUiOverlayRegistry.Register(root, Refresh);
             Refresh();
         }
 
         public void Toggle()
         {
-            root.gameObject.SetActive(!root.gameObject.activeSelf);
-            if (root.gameObject.activeSelf)
-            {
-                Refresh();
-            }
+            RuntimeUiOverlayRegistry.Toggle(root, Refresh);
         }
 
         private void Refresh()
@@ -62,6 +59,8 @@ namespace IdleOnLike.UI
             {
                 BuildRow(runtime.Catalog.Talents[i], i);
             }
+
+            RuntimeUiFactory.SetScrollContentHeight(listRoot, 20f + runtime.Catalog.Talents.Count * 82f);
         }
 
         private void BuildRow(TalentDefinition talent, int index)

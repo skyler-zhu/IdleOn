@@ -10,6 +10,7 @@ namespace IdleOnLike.UI
         private readonly Quests.QuestService questService;
         private readonly Inventory.InventoryService inventoryService;
         private readonly RectTransform root;
+        private readonly RectTransform bodyContent;
         private readonly bool allowActions;
         private UnityEngine.UI.Text bodyText;
         private UnityEngine.UI.Button actionButton;
@@ -34,8 +35,9 @@ namespace IdleOnLike.UI
             var title = RuntimeUiFactory.CreateText(root, "Title", "Quest", 19, TextAnchor.MiddleLeft, Color.white);
             RuntimeUiFactory.SetRect(title.rectTransform, new Vector2(0.08f, 0.86f), new Vector2(0.92f, 0.98f), Vector2.zero, Vector2.zero);
 
-            bodyText = RuntimeUiFactory.CreateText(root, "Body", string.Empty, 14, TextAnchor.UpperLeft, new Color(0.88f, 0.92f, 0.96f));
-            RuntimeUiFactory.SetRect(bodyText.rectTransform, new Vector2(0.08f, allowActions ? 0.22f : 0.06f), new Vector2(0.92f, 0.84f), Vector2.zero, Vector2.zero);
+            bodyContent = RuntimeUiFactory.CreateScrollContent(root, "Quest Body Scroll", new Vector2(0.06f, allowActions ? 0.22f : 0.06f), new Vector2(0.94f, 0.84f), new Color(0f, 0f, 0f, 0f));
+            bodyText = RuntimeUiFactory.CreateText(bodyContent, "Body", string.Empty, 14, TextAnchor.UpperLeft, new Color(0.88f, 0.92f, 0.96f));
+            RuntimeUiFactory.Stretch(bodyText.rectTransform, new Vector2(6f, 0f), new Vector2(-6f, 0f));
 
             if (allowActions)
             {
@@ -49,6 +51,8 @@ namespace IdleOnLike.UI
             var lifetime = parent.GetComponentInParent<RuntimeUiLifetime>();
             lifetime?.Register(Dispose);
             Refresh();
+            root.gameObject.SetActive(false);
+            RuntimeUiOverlayRegistry.RegisterQuestDetails(root, Refresh);
         }
 
         private void Refresh()
@@ -61,6 +65,7 @@ namespace IdleOnLike.UI
 
             var actionQuest = questService.GetNextActionableQuest();
             bodyText.text = BuildQuestWindow();
+            RuntimeUiFactory.SetScrollContentHeight(bodyContent, 28f + bodyText.text.Split('\n').Length * 21f);
 
             if (actionQuest == null)
             {

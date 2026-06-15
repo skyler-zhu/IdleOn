@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: Quest_CantSomebodyElseDoIt
   m_EditorClassIdentifier: 
   id: cant_somebody_else_do_it
-  title: Can't somebody else do it?
-  description: Create or switch to the second character so the account can keep growing in parallel.
+  title: Parallel Advancement
+  description: Switch to the second character to establish account-wide progression.
   icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
   giverName: Scripticus
   giverPortrait: {fileID: 0}
-  prerequisiteQuestId: gear_up_gamer
+  prerequisiteQuestId: defeat_stone_idol
   requiredCharacterId: ""
   objectives:
   - objectiveType: 5

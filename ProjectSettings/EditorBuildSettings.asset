@@ -18,9 +18,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Forest.unity
     guid: b1adace4b4f132c45bc2b582ac465c3d
   - enabled: 1
+    path: Assets/Scenes/StoneSanctum.unity
+    guid: 4d5e6f708192837465564738291a2b3c
+  - enabled: 1
     path: Assets/Scenes/MineCave.unity
     guid: 5a547e28866b49daa6cbd74f27839356
-  - enabled: 1
-    path: Assets/Scenes/ExpansionPreview.unity
-    guid: 1ef871ef010ff594e8e703e6ea182370
   m_configObjects: {}

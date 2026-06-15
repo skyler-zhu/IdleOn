@@ -9,6 +9,7 @@ namespace IdleOnLike.Combat
     public sealed class CombatController : MonoBehaviour
     {
         private const int EnemyCount = 3;
+        private const int StoneEnemyCount = 1;
         private const float AttackSeconds = 1f;
         private const float RespawnSeconds = 1f;
 
@@ -16,6 +17,7 @@ namespace IdleOnLike.Combat
         private CombatService combatService;
         private CombatView combatView;
         private bool isAutoMode;
+        private bool isReturningToVillage;
         private float nextManualActionTime;
 
         public static CombatController Create(GameRuntime runtime)
@@ -30,16 +32,28 @@ namespace IdleOnLike.Combat
         {
             runtime = gameRuntime;
             combatService = new CombatService(runtime.State, runtime.InventoryService, runtime.EquipmentService, runtime.QuestService, runtime.TalentService);
+            if (runtime.State.CurrentZone == runtime.Catalog.ForestZone && runtime.ConsumeSpawnForestAtStonePortal())
+            {
+                combatService.SpawnAtForestStonePortal();
+            }
+            else if (runtime.State.CurrentZone == runtime.Catalog.ForestZone && runtime.State.SaveData.currentActivity == ZoneActivity.Chopping.ToString())
+            {
+                isAutoMode = true;
+                combatService.SpawnAtTree();
+            }
+
             combatView = CombatView.Create(runtime, combatService);
             CombatHudScreen.Build(runtime, combatService, () => combatView.IsPlayerNearTree(combatService.PlayerPosition), () => isAutoMode, ToggleAutoMode, CanManualAction, PerformManualAction);
             combatService.EnemyDefeated += OnEnemyDefeated;
-            combatService.SpawnInitialEnemies(EnemyCount);
+            combatService.PlayerDied += OnPlayerDied;
+            runtime.GatheringService.ResourceGathered += OnResourceGathered;
+            combatService.SpawnInitialEnemies(combatService.IsStoneZone ? StoneEnemyCount : EnemyCount);
             StartCoroutine(CombatLoop());
         }
 
         private void Update()
         {
-            if (combatService == null)
+            if (combatService == null || isReturningToVillage)
             {
                 return;
             }
@@ -49,7 +63,7 @@ namespace IdleOnLike.Combat
                 combatService.Jump();
             }
 
-            if (Input.GetKeyDown(KeyCode.F) && combatService.IsNearRope)
+            if (!combatService.IsStoneZone && Input.GetKeyDown(KeyCode.F) && combatService.IsNearRope)
             {
                 combatService.UseRope();
                 return;
@@ -57,7 +71,21 @@ namespace IdleOnLike.Combat
 
             if (Input.GetKeyDown(KeyCode.F) && combatView.IsPlayerNearVillagePortal(combatService.PlayerPosition))
             {
-                runtime.ReturnToVillage();
+                if (combatService.IsStoneZone)
+                {
+                    runtime.ReturnFromStoneSanctumToForest();
+                }
+                else
+                {
+                    runtime.ReturnToVillage();
+                }
+
+                return;
+            }
+
+            if (Input.GetKeyDown(KeyCode.F) && combatView.IsPlayerNearStonePortal(combatService.PlayerPosition))
+            {
+                runtime.TravelToStoneSanctum();
                 return;
             }
 
@@ -67,7 +95,7 @@ namespace IdleOnLike.Combat
             }
 
             var fighting = runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString();
-            var chopping = runtime.State.SaveData.currentActivity == ZoneActivity.Chopping.ToString();
+            var chopping = !combatService.IsStoneZone && runtime.State.SaveData.currentActivity == ZoneActivity.Chopping.ToString();
             if (!isAutoMode)
             {
                 combatService.MovePlayerManual(Input.GetAxisRaw("Horizontal"), Time.deltaTime);
@@ -89,7 +117,7 @@ namespace IdleOnLike.Combat
                 return;
             }
 
-            if (combatView.IsPlayerNearTree(combatService.PlayerPosition))
+            if (!combatService.IsStoneZone && combatView.IsPlayerNearTree(combatService.PlayerPosition))
             {
                 if (!runtime.GatheringService.IsChopping)
                 {
@@ -121,17 +149,49 @@ namespace IdleOnLike.Combat
             while (enabled)
             {
                 yield return new WaitForSeconds(AttackSeconds);
-                if (isAutoMode && runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString())
+                if (!isReturningToVillage && isAutoMode && runtime.State.SaveData.currentActivity == ZoneActivity.Fighting.ToString())
                 {
-                    combatService.AttackCurrentTarget();
+                    if (combatService.CanAttackCurrentTargetInRange())
+                    {
+                        combatService.AttackCurrentTarget();
+                    }
                 }
             }
         }
 
         private void OnEnemyDefeated(CombatEnemyInstance enemy)
         {
+            if (isReturningToVillage)
+            {
+                return;
+            }
+
             runtime.Save();
             StartCoroutine(RespawnAfterDelay(enemy));
+        }
+
+        private void OnPlayerDied()
+        {
+            if (isReturningToVillage)
+            {
+                return;
+            }
+
+            isReturningToVillage = true;
+            StartCoroutine(ReturnToVillageAfterDeath());
+        }
+
+        private void OnResourceGathered()
+        {
+            combatView?.PlayPlayerGather();
+        }
+
+        private IEnumerator ReturnToVillageAfterDeath()
+        {
+            yield return new WaitForSeconds(1f);
+            runtime.State.SaveData.currentHp = Mathf.Max(1, runtime.State.SaveData.currentHp);
+            runtime.Save();
+            runtime.ReturnToVillage();
         }
 
         private IEnumerator RespawnAfterDelay(CombatEnemyInstance enemy)
@@ -145,6 +205,12 @@ namespace IdleOnLike.Combat
             if (combatService != null)
             {
                 combatService.EnemyDefeated -= OnEnemyDefeated;
+                combatService.PlayerDied -= OnPlayerDied;
+            }
+
+            if (runtime != null && runtime.GatheringService != null)
+            {
+                runtime.GatheringService.ResourceGathered -= OnResourceGathered;
             }
         }
     }

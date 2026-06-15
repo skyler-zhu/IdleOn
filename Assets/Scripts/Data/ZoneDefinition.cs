@@ -15,8 +15,11 @@ namespace IdleOnLike.Data
         [Header("Scene")]
         [SerializeField] private string sceneName;
         [SerializeField] private Sprite mapIcon;
-        [SerializeField] private Sprite backgroundSprite;
+        [SerializeField] private ZoneVisualDefinition visualDefinition;
         [SerializeField] private GameObject zonePrefab;
+
+        [Header("Audio")]
+        [SerializeField] private AudioClip bgmClip;
 
         [Header("Unlocks")]
         [SerializeField] private QuestDefinition requiredQuest;
@@ -25,19 +28,18 @@ namespace IdleOnLike.Data
         [Header("Content")]
         [SerializeField] private List<ZoneEnemySpawn> enemies = new List<ZoneEnemySpawn>();
         [SerializeField] private List<ZoneResourceNode> resourceNodes = new List<ZoneResourceNode>();
-        [SerializeField] private ZoneDefinition nextZonePreview;
 
         public string Id => id;
         public string DisplayName => displayName;
         public string Description => description;
         public string SceneName => sceneName;
         public Sprite MapIcon => mapIcon;
-        public Sprite BackgroundSprite => backgroundSprite;
+        public ZoneVisualDefinition Visual => visualDefinition;
         public GameObject ZonePrefab => zonePrefab;
+        public AudioClip BgmClip => bgmClip;
         public QuestDefinition RequiredQuest => requiredQuest;
         public int RequiredCharacterLevel => requiredCharacterLevel;
         public IReadOnlyList<ZoneEnemySpawn> Enemies => enemies;
         public IReadOnlyList<ZoneResourceNode> ResourceNodes => resourceNodes;
-        public ZoneDefinition NextZonePreview => nextZonePreview;
     }
 }

@@ -22,10 +22,13 @@ namespace IdleOnLike.Save
         public List<SaveRankEntry> talentRanks = new List<SaveRankEntry>();
         public List<SaveRankEntry> skillNodeRanks = new List<SaveRankEntry>();
         public List<SaveSkillProgress> skillProgress = new List<SaveSkillProgress>();
+        public List<SaveCountEntry> itemAcquisitionCounts = new List<SaveCountEntry>();
+        public List<SaveCountEntry> craftedItemCounts = new List<SaveCountEntry>();
         public List<string> activeQuestIds = new List<string>();
         public List<string> completedQuestIds = new List<string>();
         public List<SaveQuestProgress> questProgress = new List<SaveQuestProgress>();
         public List<string> unlockedCharacterIds = new List<string>();
+        public List<SaveWorldCooldown> worldCooldowns = new List<SaveWorldCooldown>();
 
         public void EnsureCollections()
         {
@@ -54,6 +57,16 @@ namespace IdleOnLike.Save
                 skillProgress = new List<SaveSkillProgress>();
             }
 
+            if (itemAcquisitionCounts == null)
+            {
+                itemAcquisitionCounts = new List<SaveCountEntry>();
+            }
+
+            if (craftedItemCounts == null)
+            {
+                craftedItemCounts = new List<SaveCountEntry>();
+            }
+
             if (activeQuestIds == null)
             {
                 activeQuestIds = new List<string>();
@@ -74,6 +87,11 @@ namespace IdleOnLike.Save
                 unlockedCharacterIds = new List<string>();
             }
 
+            if (worldCooldowns == null)
+            {
+                worldCooldowns = new List<SaveWorldCooldown>();
+            }
+
             if (!string.IsNullOrEmpty(characterId) && unlockedCharacterIds.Count == 0)
             {
                 unlockedCharacterIds.Add(characterId);
@@ -88,6 +106,112 @@ namespace IdleOnLike.Save
             {
                 currentHp = 50 + level * 10;
             }
+
+            MigrateItemIds(inventory);
+            MigrateEquipmentItemIds(equipment);
+        }
+
+        internal static string MigrateItemId(string itemId)
+        {
+            return itemId == "mushroom_cap" ? "rat_tail" : itemId;
+        }
+
+        internal static void MigrateItemIds(List<SaveItemStack> items)
+        {
+            if (items == null)
+            {
+                return;
+            }
+
+            SaveItemStack ratTailStack = null;
+            for (var i = items.Count - 1; i >= 0; i--)
+            {
+                var stack = items[i];
+                if (stack == null)
+                {
+                    items.RemoveAt(i);
+                    continue;
+                }
+
+                stack.itemId = MigrateItemId(stack.itemId);
+                if (stack.itemId != "rat_tail")
+                {
+                    continue;
+                }
+
+                if (ratTailStack == null)
+                {
+                    ratTailStack = stack;
+                    continue;
+                }
+
+                ratTailStack.quantity += stack.quantity;
+                items.RemoveAt(i);
+            }
+        }
+
+        internal static void MigrateEquipmentItemIds(List<SaveEquipmentSlot> slots)
+        {
+            if (slots == null)
+            {
+                return;
+            }
+
+            foreach (var slot in slots)
+            {
+                if (slot != null)
+                {
+                    slot.itemId = MigrateItemId(slot.itemId);
+                }
+            }
+        }
+
+        public void AddItemAcquisition(string itemId, int quantity)
+        {
+            AddCount(itemAcquisitionCounts, MigrateItemId(itemId), quantity);
+        }
+
+        public void AddCraftedItem(string itemId, int quantity)
+        {
+            AddCount(craftedItemCounts, MigrateItemId(itemId), quantity);
+        }
+
+        public int GetItemAcquisitionCount(string itemId)
+        {
+            return GetCount(itemAcquisitionCounts, MigrateItemId(itemId));
+        }
+
+        public int GetCraftedItemCount(string itemId)
+        {
+            return GetCount(craftedItemCounts, MigrateItemId(itemId));
+        }
+
+        private static void AddCount(List<SaveCountEntry> counts, string id, int quantity)
+        {
+            if (counts == null || string.IsNullOrEmpty(id) || quantity <= 0)
+            {
+                return;
+            }
+
+            var entry = counts.Find(candidate => candidate.id == id);
+            if (entry == null)
+            {
+                counts.Add(new SaveCountEntry { id = id, count = quantity });
+                return;
+            }
+
+            entry.count += quantity;
+        }
+
+        private static int GetCount(List<SaveCountEntry> counts, string id)
+        {
+            if (counts == null || string.IsNullOrEmpty(id))
+            {
+                return 0;
+            }
+
+            var entry = counts.Find(candidate => candidate.id == id);
+            return entry != null ? entry.count : 0;
         }
 
         public static PlayerSaveData CreateNew(CharacterDefinition character, ZoneDefinition fallbackZone)
@@ -155,6 +279,8 @@ namespace IdleOnLike.Save
             {
                 character?.EnsureCollections();
             }
+
+            PlayerSaveData.MigrateItemIds(sharedInventory);
 
             if (string.IsNullOrEmpty(activeCharacterId) && characters.Count > 0)
             {
@@ -251,10 +377,24 @@ namespace IdleOnLike.Save
     }
 
     [Serializable]
+    public sealed class SaveCountEntry
+    {
+        public string id;
+        public int count;
+    }
+
+    [Serializable]
     public sealed class SaveQuestProgress
     {
         public string questId;
         public int objectiveIndex;
         public int currentAmount;
+    }
+
+    [Serializable]
+    public sealed class SaveWorldCooldown
+    {
+        public string id;
+        public string lastCompletedUtc;
     }
 }

@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dcf01cafab9ae14c866ca61ac994744, type: 3}
+  m_Name: Quest_DefeatStoneIdol
+  m_EditorClassIdentifier: 
+  id: defeat_stone_idol
+  title: Stone Sanctum Trial
+  description: Enter the Stone Sanctum through the forest portal and defeat the Stone Idol guardian.
+  icon: {fileID: 21300000, guid: 4e84521007afe274b9a1616f18c38cb4, type: 3}
+  giverName: Scripticus
+  giverPortrait: {fileID: 0}
+  prerequisiteQuestId: scrap_smithing
+  requiredCharacterId: ""
+  objectives:
+  - objectiveType: 0
+    targetId: stone_idol
+    requiredAmount: 1
+    displayText: Defeat the Stone Idol
+  rewards:
+    coins: 100
+    experience: 150
+    items:
+    - item: {fileID: 11400000, guid: c7424c49694a4908867066c66de68f88, type: 2}
+      quantity: 5
+  nextQuest: {fileID: 11400000, guid: 62f1c4f0b9e947318f58b5e4ed6f6081, type: 2}
+  unlockedZone: {fileID: 11400000, guid: 1a2b3c4d5e6f70819283746556473829, type: 2}
+  unlockedSkill: {fileID: 0}

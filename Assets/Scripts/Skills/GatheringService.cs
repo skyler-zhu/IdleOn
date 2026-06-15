@@ -33,6 +33,7 @@ namespace IdleOnLike.Skills
 
         public event Action Changed;
         public event Action<string> LogAdded;
+        public event Action ResourceGathered;
 
         public bool IsChopping => saveData.currentActivity == ZoneActivity.Chopping.ToString();
         public bool IsMining => saveData.currentActivity == ZoneActivity.Mining.ToString();
@@ -131,6 +132,7 @@ namespace IdleOnLike.Skills
             questService.AddProgress(QuestObjectiveType.GatherResource, nodeId, 1);
             var levels = skillTreeService.AddSkillExperience(skillType, 5);
             LogAdded?.Invoke($"{actionLabel} {itemName} x{quantity}.");
+            ResourceGathered?.Invoke();
             if (levels > 0)
             {
                 LogAdded?.Invoke($"{skillType} leveled up. Skill point +{levels}.");

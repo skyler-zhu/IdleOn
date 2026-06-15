@@ -32,6 +32,7 @@ namespace IdleOnLike.UI
             var inventoryPanel = new InventoryEquipmentPanel(runtime, canvas.transform);
             var talentPanel = new TalentTreePanel(runtime, canvas.transform);
             var skillPanel = new SkillTreePanel(runtime, canvas.transform);
+            _ = new QuestTrackerPanel(runtime, canvas.transform, true);
             var inventoryService = runtime.InventoryService;
             var equipmentService = runtime.EquipmentService;
             var questService = runtime.QuestService;
@@ -48,7 +49,7 @@ namespace IdleOnLike.UI
             RuntimeUiFactory.SetRect(skillButton.GetComponent<RectTransform>(), new Vector2(0.61f, 0.16f), new Vector2(0.70f, 0.84f), Vector2.zero, Vector2.zero);
             skillButton.onClick.AddListener(skillPanel.Toggle);
 
-            var offlineButton = RuntimeUiFactory.CreateButton(topBar, "Offline Button", "Sim 1h", new Color(0.22f, 0.35f, 0.42f, 1f));
+            var offlineButton = RuntimeUiFactory.CreateButton(topBar, "Offline Button", "Offline +1h", new Color(0.22f, 0.35f, 0.42f, 1f));
             RuntimeUiFactory.SetRect(offlineButton.GetComponent<RectTransform>(), new Vector2(0.71f, 0.16f), new Vector2(0.79f, 0.84f), Vector2.zero, Vector2.zero);
             offlineButton.onClick.AddListener(() => OfflineGainsPanel.Show(runtime.SimulateOfflineHour()));
 
@@ -56,7 +57,7 @@ namespace IdleOnLike.UI
             RuntimeUiFactory.SetRect(charactersButton.GetComponent<RectTransform>(), new Vector2(0.80f, 0.16f), new Vector2(0.89f, 0.84f), Vector2.zero, Vector2.zero);
             charactersButton.onClick.AddListener(() => onCharacterSelectRequested());
 
-            var newGameButton = RuntimeUiFactory.CreateButton(topBar, "New Game Button", "New Save", new Color(0.42f, 0.18f, 0.18f, 1f));
+            var newGameButton = RuntimeUiFactory.CreateButton(topBar, "New Game Button", "Reset Save", new Color(0.42f, 0.18f, 0.18f, 1f));
             RuntimeUiFactory.SetRect(newGameButton.GetComponent<RectTransform>(), new Vector2(0.90f, 0.16f), new Vector2(0.985f, 0.84f), Vector2.zero, Vector2.zero);
             newGameButton.onClick.AddListener(() => onNewGameRequested());
 
@@ -83,7 +84,7 @@ namespace IdleOnLike.UI
                 var character = state.Character;
                 var characterName = character != null ? character.DisplayName : state.SaveData.characterName;
                 var zoneName = zone != null ? zone.DisplayName : state.SaveData.currentZoneId;
-                status.text = $"{characterName}    Lv. {state.SaveData.level}    Coins: {state.Coins}    Zone: {zoneName}    M: Map";
+                status.text = $"{characterName}    Lv. {state.SaveData.level}    Coins: {state.Coins}    Zone: {zoneName}    M: Map    U: Quests";
             }
         }
     }

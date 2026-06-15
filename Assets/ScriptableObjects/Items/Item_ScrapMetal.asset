@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a1aafc6dac1bcd46a7a1e375946397d, type: 3}
+  m_Name: Item_ScrapMetal
+  m_EditorClassIdentifier: 
+  id: scrap_metal
+  displayName: Scrap Metal
+  description: Cheap forge stock sold by the village merchant.
+  icon: {fileID: 21300000, guid: 635ebfeb237250147bf87f3d662ae944, type: 3}
+  worldSprite: {fileID: 0}
+  worldDropPrefab: {fileID: 0}
+  itemType: 0
+  equipmentSlot: 0
+  maxStack: 99
+  sellValue: 4
+  equipStats:
+    maxHp: 0
+    attack: 0
+    defense: 0
+    strength: 0
+    agility: 0
+    wisdom: 0
+    luck: 0
+  craftingIngredients: []

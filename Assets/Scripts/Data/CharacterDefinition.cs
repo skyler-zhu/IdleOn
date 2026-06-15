@@ -15,8 +15,13 @@ namespace IdleOnLike.Data
         [Header("Art")]
         [SerializeField] private Sprite portrait;
         [SerializeField] private Sprite idleSprite;
-        [SerializeField] private RuntimeAnimatorController animatorController;
+        [SerializeField] private VisualAnimationClips animationClips = new VisualAnimationClips();
         [SerializeField] private GameObject characterPrefab;
+        [Min(0.1f)]
+        [SerializeField] private float visualScale = 1.35f;
+
+        [Header("Audio")]
+        [SerializeField] private AudioClip attackSfx;
 
         [Header("Starting State")]
         [SerializeField] private StatBlock baseStats;
@@ -29,8 +34,10 @@ namespace IdleOnLike.Data
         public string Description => description;
         public Sprite Portrait => portrait;
         public Sprite IdleSprite => idleSprite;
-        public RuntimeAnimatorController AnimatorController => animatorController;
+        public VisualAnimationClips AnimationClips => animationClips;
         public GameObject CharacterPrefab => characterPrefab;
+        public float VisualScale => visualScale;
+        public AudioClip AttackSfx => attackSfx;
         public StatBlock BaseStats => baseStats;
         public ZoneDefinition StartingZone => startingZone;
         public ItemDefinition StartingWeapon => startingWeapon;

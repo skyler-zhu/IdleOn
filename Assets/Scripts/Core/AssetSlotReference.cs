@@ -11,16 +11,11 @@ namespace IdleOnLike.Core
         public SpriteRenderer SpriteRenderer => spriteRenderer;
         public Animator Animator => animator;
 
-        public void Apply(Sprite sprite, RuntimeAnimatorController controller)
+        public void Apply(Sprite sprite)
         {
             if (spriteRenderer != null)
             {
                 spriteRenderer.sprite = sprite;
-            }
-
-            if (animator != null)
-            {
-                animator.runtimeAnimatorController = controller;
             }
         }
     }

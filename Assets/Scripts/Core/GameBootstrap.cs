@@ -9,6 +9,11 @@ namespace IdleOnLike.Core
 
         private void Awake()
         {
+            if (GameRuntime.Instance != null)
+            {
+                return;
+            }
+
             if (catalog == null)
             {
                 Debug.LogError("GameBootstrap is missing a GameCatalog reference.");

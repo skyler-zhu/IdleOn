@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: training_sword
   displayName: Training Sword
-  description: Starter craft that demonstrates material conversion into power.
+  description: A basic weapon forged from gathered materials.
   requiredSkill: {fileID: 11400000, guid: c91a35d9a7abd9c44aeb50ab6ee52daa, type: 2}
   requiredSkillLevel: 1
   ingredients:

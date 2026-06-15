@@ -15,7 +15,7 @@ MonoBehaviour:
   id: taped_helmet
   displayName: Taped Helmet
   description: A wood-and-duct-tape helmet for questionable early-game protection.
-  icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
+  icon: {fileID: 21300000, guid: b75e9b2833625424e9603b42633a2310, type: 3}
   worldSprite: {fileID: 0}
   worldDropPrefab: {fileID: 0}
   itemType: 2

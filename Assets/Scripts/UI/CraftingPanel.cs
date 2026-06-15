@@ -28,22 +28,19 @@ namespace IdleOnLike.UI
             RuntimeUiFactory.SetRect(closeButton.GetComponent<RectTransform>(), new Vector2(0.80f, 0.90f), new Vector2(0.95f, 0.97f), Vector2.zero, Vector2.zero);
             closeButton.onClick.AddListener(Toggle);
 
-            recipeList = RuntimeUiFactory.CreatePanel(root, "Recipe List", new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.86f), Vector2.zero, Vector2.zero, new Color(0.12f, 0.13f, 0.15f, 1f));
+            recipeList = RuntimeUiFactory.CreateScrollContent(root, "Recipe List", new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.86f), new Color(0.12f, 0.13f, 0.15f, 1f));
             inventoryService.Changed += Refresh;
             craftingService.Changed += Refresh;
             parent.GetComponentInParent<RuntimeUiLifetime>()?.Register(Dispose);
 
             root.gameObject.SetActive(false);
+            RuntimeUiOverlayRegistry.Register(root, Refresh);
             Refresh();
         }
 
         public void Toggle()
         {
-            root.gameObject.SetActive(!root.gameObject.activeSelf);
-            if (root.gameObject.activeSelf)
-            {
-                Refresh();
-            }
+            RuntimeUiOverlayRegistry.Toggle(root, Refresh);
         }
 
         private void Refresh()
@@ -55,6 +52,7 @@ namespace IdleOnLike.UI
             }
 
             Clear(recipeList);
+            var rowIndex = 0;
             for (var i = 0; i < runtime.Catalog.Recipes.Count; i++)
             {
                 var recipe = runtime.Catalog.Recipes[i];
@@ -63,7 +61,7 @@ namespace IdleOnLike.UI
                     continue;
                 }
 
-                var row = RuntimeUiFactory.CreatePanel(recipeList, $"Recipe {i}", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(14f, -88f - i * 96f), new Vector2(-14f, -14f - i * 96f), new Color(0.18f, 0.19f, 0.22f, 1f));
+                var row = RuntimeUiFactory.CreatePanel(recipeList, $"Recipe {i}", new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(14f, -88f - rowIndex * 96f), new Vector2(-14f, -14f - rowIndex * 96f), new Color(0.18f, 0.19f, 0.22f, 1f));
                 var ingredients = string.Empty;
                 foreach (var ingredient in recipe.Ingredients)
                 {
@@ -88,7 +86,10 @@ namespace IdleOnLike.UI
                         Refresh();
                     }
                 });
+                rowIndex++;
             }
+
+            RuntimeUiFactory.SetScrollContentHeight(recipeList, 20f + rowIndex * 96f);
         }
 
         private static void Clear(Transform parent)

@@ -14,12 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: slime
   displayName: Slime
-  description: A bouncy early-game enemy with slightly more health than a mushroom.
+  description: A bouncy early-game enemy with slightly more health than a rat.
   idleSprite: {fileID: 21300000, guid: 3c232c4a2377f424e85e758bacc9fe18, type: 3}
   hitSprite: {fileID: 21300000, guid: 3c232c4a2377f424e85e758bacc9fe18, type: 3}
   deathSprite: {fileID: 21300000, guid: 3c232c4a2377f424e85e758bacc9fe18, type: 3}
-  animatorController: {fileID: 0}
+  animationClips:
+    idle: {fileID: 7400000, guid: 0ffefa9241b57fc41aebc90c9153b832, type: 2}
+    walk: {fileID: 7400000, guid: 3372d10a5cba3fc45bcd9ede07477d20, type: 2}
+    attack: {fileID: 0}
+    jump: {fileID: 0}
+    hit: {fileID: 0}
+    death: {fileID: 7400000, guid: 8ac15e3bb7500234d93440ac1e91b1a0, type: 2}
   enemyPrefab: {fileID: 0}
+  visualYOffset: -0.1
+  visualScale: 4
   maxHp: 28
   attackDamage: 3
   attackInterval: 1.7

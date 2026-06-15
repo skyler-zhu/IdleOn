@@ -42,7 +42,7 @@ namespace IdleOnLike.Shop
             var price = GetBuyPrice(item) * quantity;
             if (state.Coins < price)
             {
-                LogAdded?.Invoke("Not enough coins.");
+                LogAdded?.Invoke("Insufficient coins.");
                 return false;
             }
 

@@ -34,6 +34,10 @@ namespace IdleOnLike.Core
         private OfflineProgressService offlineProgressService;
         private OfflineGainsResult pendingOfflineGains;
         private WorldMapPanel worldMapPanel;
+        private AudioService audioService;
+        private ExitConfirmationPanel exitConfirmationPanel;
+        private bool spawnForestAtStonePortal;
+        private static readonly TimeSpan MinimumOfflineElapsed = TimeSpan.FromSeconds(5);
 
         public GameState State { get; private set; }
         public GameCatalog Catalog => catalog;
@@ -47,9 +51,27 @@ namespace IdleOnLike.Core
         public TalentService TalentService => talentService;
         public SkillTreeService SkillTreeService => skillTreeService;
         public OfflineGainsResult PendingOfflineGains => pendingOfflineGains;
+        public AudioService AudioService => audioService;
 
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (RuntimeUiOverlayRegistry.CloseTop())
+                {
+                    return;
+                }
+
+                EnsureExitConfirmationPanel();
+                exitConfirmationPanel.Show();
+                return;
+            }
+
+            if (State != null && Input.GetKeyDown(KeyCode.U))
+            {
+                RuntimeUiOverlayRegistry.ToggleQuestDetails();
+            }
+
             if (State != null && worldMapPanel != null && Input.GetKeyDown(KeyCode.M))
             {
                 worldMapPanel.Toggle();
@@ -68,6 +90,7 @@ namespace IdleOnLike.Core
             DontDestroyOnLoad(gameObject);
 
             catalog = gameCatalog;
+            audioService = new AudioService(transform);
             saveService = new SaveService();
             sceneLoader = new SceneLoaderService();
             SceneManager.sceneLoaded += OnSceneLoaded;
@@ -79,12 +102,20 @@ namespace IdleOnLike.Core
                 return;
             }
 
+            saveData.EnsureCollections();
+            if (saveData.GetActiveCharacter() == null)
+            {
+                Debug.LogWarning("Loaded save data has no active character. Returning to character select.");
+                sceneLoader.LoadScene("CharacterSelect");
+                return;
+            }
+
             State = new GameState(catalog, saveData);
             CreateRuntimeServices();
             EnsureWorldMap();
+            var zone = EnsureValidCurrentZone();
             CompleteSwitchCharacterQuestsForAllCharacters(State.SaveData.characterId);
             TryApplyStartupOfflineGains();
-            var zone = State.CurrentZone != null ? State.CurrentZone : catalog.VillageZone;
             sceneLoader.LoadZone(zone);
         }
 
@@ -115,10 +146,11 @@ namespace IdleOnLike.Core
             State = new GameState(catalog, accountData);
             CreateRuntimeServices();
             EnsureWorldMap();
+            EnsureValidCurrentZone();
             CompleteSwitchCharacterQuestsForAllCharacters(character.Id);
             pendingOfflineGains = CalculateOfflineForActiveCharacter();
             saveService.Save(accountData);
-            sceneLoader.LoadZone(State.CurrentZone != null ? State.CurrentZone : catalog.VillageZone);
+            sceneLoader.LoadZone(EnsureValidCurrentZone());
         }
 
         public void Save()
@@ -139,6 +171,12 @@ namespace IdleOnLike.Core
             TravelToZone(catalog.ForestZone);
         }
 
+        public void ReturnFromStoneSanctumToForest()
+        {
+            spawnForestAtStonePortal = true;
+            TravelToForest();
+        }
+
         public void TravelToMineCave()
         {
             if (State != null)
@@ -147,6 +185,23 @@ namespace IdleOnLike.Core
             }
 
             TravelToZone(catalog.FindZone("mine_cave"));
+        }
+
+        public void TravelToStoneSanctum()
+        {
+            if (State != null)
+            {
+                State.SaveData.currentActivity = ZoneActivity.Fighting.ToString();
+            }
+
+            TravelToZone(catalog.FindZone("stone_sanctum"));
+        }
+
+        public bool ConsumeSpawnForestAtStonePortal()
+        {
+            var shouldSpawnAtPortal = spawnForestAtStonePortal;
+            spawnForestAtStonePortal = false;
+            return shouldSpawnAtPortal;
         }
 
         public void ReturnToVillage()
@@ -162,9 +217,35 @@ namespace IdleOnLike.Core
                 return;
             }
 
+            if (!IsZoneUnlocked(zone))
+            {
+                Debug.Log($"Zone locked: {zone.DisplayName}");
+                return;
+            }
+
             State.SaveData.currentZoneId = zone.Id;
             Save();
             sceneLoader.LoadZone(zone);
+        }
+
+        public bool IsZoneUnlocked(ZoneDefinition zone)
+        {
+            if (zone == null)
+            {
+                return false;
+            }
+
+            if (State == null || QuestService == null)
+            {
+                return zone.RequiredQuest == null && zone.RequiredCharacterLevel <= 0;
+            }
+
+            if (zone.RequiredCharacterLevel > 0 && State.SaveData.level < zone.RequiredCharacterLevel)
+            {
+                return false;
+            }
+
+            return zone.RequiredQuest == null || QuestService.IsQuestCompleted(zone.RequiredQuest.Id);
         }
 
         public void DeleteSaveAndReturnToCharacterSelect()
@@ -205,26 +286,30 @@ namespace IdleOnLike.Core
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            EnsureAudioListener();
             worldMapPanel?.Hide();
             if (scene.name == "CharacterSelect")
             {
+                audioService?.PlayBgm(catalog.CharacterSelectBgmClip);
                 CharacterSelectScreen.Build(catalog, State != null ? State.AccountData : saveService.Load(), StartNewGame);
                 return;
             }
 
-            if (State == null || State.CurrentZone == null || scene.name != State.CurrentZone.SceneName)
+            var currentZone = EnsureValidCurrentZone();
+            if (State == null || currentZone == null || scene.name != currentZone.SceneName)
             {
                 return;
             }
 
-            if (State.CurrentZone == catalog.ForestZone)
+            audioService?.PlayBgm(currentZone.BgmClip);
+            if (currentZone == catalog.ForestZone || currentZone.Id == "stone_sanctum")
             {
                 CombatController.Create(this);
                 ShowPendingOfflineGainsIfAny();
                 return;
             }
 
-            if (State.CurrentZone.Id == "mine_cave")
+            if (currentZone.Id == "mine_cave")
             {
                 MineCaveController.Create(this);
                 ShowPendingOfflineGainsIfAny();
@@ -234,6 +319,67 @@ namespace IdleOnLike.Core
             VillageView.Create(this);
             VillageHudScreen.Build(this, TravelToForest, TravelToMineCave, ReturnToCharacterSelect, DeleteSaveAndReturnToCharacterSelect);
             ShowPendingOfflineGainsIfAny();
+        }
+
+        private ZoneDefinition EnsureValidCurrentZone()
+        {
+            if (State == null)
+            {
+                return null;
+            }
+
+            if (State.SaveData == null)
+            {
+                Debug.LogWarning("Current account has no active character save data.");
+                return null;
+            }
+
+            var zone = State.CurrentZone;
+            if (zone != null && !string.IsNullOrWhiteSpace(zone.SceneName))
+            {
+                return zone;
+            }
+
+            zone = catalog != null ? catalog.VillageZone : null;
+            if (zone == null)
+            {
+                Debug.LogError("Cannot recover current zone because GameCatalog has no Village zone.");
+                return null;
+            }
+
+            var oldZoneId = State.SaveData != null ? State.SaveData.currentZoneId : string.Empty;
+            State.SaveData.currentZoneId = zone.Id;
+            Debug.LogWarning($"Recovered missing current zone '{oldZoneId}' by returning to {zone.DisplayName}.");
+            Save();
+            return zone;
+        }
+
+        private static void EnsureAudioListener()
+        {
+            var listeners = FindObjectsOfType<AudioListener>();
+            if (listeners.Length == 0)
+            {
+                var camera = Camera.main;
+                if (camera != null)
+                {
+                    camera.gameObject.AddComponent<AudioListener>();
+                }
+
+                return;
+            }
+
+            for (var i = 1; i < listeners.Length; i++)
+            {
+                listeners[i].enabled = false;
+            }
+
+            listeners[0].enabled = true;
+        }
+
+        public void PlayAttackSfx()
+        {
+            var character = State != null ? State.Character : null;
+            audioService?.PlaySfx(character != null ? character.AttackSfx : null);
         }
 
         private void CreateRuntimeServices()
@@ -265,6 +411,14 @@ namespace IdleOnLike.Core
             if (worldMapPanel == null)
             {
                 worldMapPanel = new WorldMapPanel(this);
+            }
+        }
+
+        private void EnsureExitConfirmationPanel()
+        {
+            if (exitConfirmationPanel == null)
+            {
+                exitConfirmationPanel = new ExitConfirmationPanel(this);
             }
         }
 
@@ -307,7 +461,7 @@ namespace IdleOnLike.Core
                 }
 
                 var elapsed = DateTime.UtcNow - lastSavedUtc.ToUniversalTime();
-                if (elapsed < TimeSpan.FromMinutes(1))
+                if (elapsed < MinimumOfflineElapsed)
                 {
                     continue;
                 }

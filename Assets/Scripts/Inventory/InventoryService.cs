@@ -39,6 +39,8 @@ namespace IdleOnLike.Inventory
                 });
             }
 
+            state.SaveData.EnsureCollections();
+            state.SaveData.AddItemAcquisition(itemId, quantity);
             ItemAdded?.Invoke(QuestObjectiveType.CollectItem, itemId, quantity);
             Changed?.Invoke();
         }

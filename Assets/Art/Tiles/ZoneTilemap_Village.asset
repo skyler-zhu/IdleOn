@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ece900e2b52849fa8d81cc40e14d49c8, type: 3}
+  m_Name: ZoneTilemap_Village
+  m_EditorClassIdentifier: 
+  lowerGroundTile: {fileID: 11400000, guid: 1d9f99f03b9813a44b7fbfdc1b741196, type: 2}
+  upperPlatformTile: {fileID: 11400000, guid: 1d9f99f03b9813a44b7fbfdc1b741196, type: 2}
+  backgroundTile: {fileID: 11400000, guid: 1d9f99f03b9813a44b7fbfdc1b741196, type: 2}
+  useBackgroundTile: 0
+  tileSize: 1

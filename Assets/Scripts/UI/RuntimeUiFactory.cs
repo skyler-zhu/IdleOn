@@ -41,6 +41,48 @@ namespace IdleOnLike.UI
             return rect;
         }
 
+        public static RectTransform CreateScrollContent(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Color backgroundColor)
+        {
+            var root = CreatePanel(parent, name, anchorMin, anchorMax, Vector2.zero, Vector2.zero, backgroundColor);
+            var scrollRect = root.gameObject.AddComponent<ScrollRect>();
+            scrollRect.horizontal = false;
+            scrollRect.vertical = true;
+            scrollRect.scrollSensitivity = 28f;
+
+            var viewportObject = new GameObject("Viewport");
+            viewportObject.transform.SetParent(root, false);
+            var viewport = viewportObject.AddComponent<RectTransform>();
+            Stretch(viewport, Vector2.zero, Vector2.zero);
+            var viewportImage = viewportObject.AddComponent<Image>();
+            viewportImage.color = new Color(0f, 0f, 0f, 0.01f);
+            var mask = viewportObject.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
+
+            var contentObject = new GameObject("Content");
+            contentObject.transform.SetParent(viewport, false);
+            var content = contentObject.AddComponent<RectTransform>();
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0.5f, 1f);
+            content.offsetMin = Vector2.zero;
+            content.offsetMax = Vector2.zero;
+
+            scrollRect.viewport = viewport;
+            scrollRect.content = content;
+            return content;
+        }
+
+        public static void SetScrollContentHeight(RectTransform content, float height)
+        {
+            if (content == null)
+            {
+                return;
+            }
+
+            content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(1f, height));
+            content.anchoredPosition = Vector2.zero;
+        }
+
         public static Text CreateText(Transform parent, string name, string value, int fontSize, TextAnchor alignment, Color color)
         {
             var textObject = new GameObject(name);

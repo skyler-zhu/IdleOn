@@ -39,7 +39,6 @@ namespace IdleOnLike.EditorTools
             var itemSprite = CreatePlaceholderSprite("placeholder_item", new Color32(235, 215, 87, 255));
             var villageSprite = CreatePlaceholderSprite("placeholder_village", new Color32(98, 173, 132, 255));
             var forestSprite = CreatePlaceholderSprite("placeholder_forest", new Color32(43, 117, 77, 255));
-            var expansionSprite = CreatePlaceholderSprite("placeholder_expansion_zone", new Color32(126, 96, 178, 255));
 
             var wood = CreateAsset<ItemDefinition>($"{ItemPath}/Item_Wood.asset");
             Set(wood, "id", "wood");
@@ -118,15 +117,6 @@ namespace IdleOnLike.EditorTools
             Set(forest, "backgroundSprite", forestSprite);
             SetZoneEnemies(forest, (mushroom, 3), (slime, 2));
 
-            var expansion = CreateAsset<ZoneDefinition>($"{ZonePath}/Zone_ExpansionPreview.asset");
-            Set(expansion, "id", "expansion_preview");
-            Set(expansion, "displayName", "Expansion Preview");
-            Set(expansion, "description", "Reserved for a third scene if time allows.");
-            Set(expansion, "sceneName", "ExpansionPreview");
-            Set(expansion, "mapIcon", expansionSprite);
-            Set(expansion, "backgroundSprite", expansionSprite);
-            Set(forest, "nextZonePreview", expansion);
-
             var hero = CreateAsset<CharacterDefinition>($"{CharacterPath}/Character_Beginner.asset");
             Set(hero, "id", "beginner_01");
             Set(hero, "displayName", "Beginner");
@@ -190,21 +180,18 @@ namespace IdleOnLike.EditorTools
             Set(catalog, "defaultCharacter", hero);
             Set(catalog, "villageZone", village);
             Set(catalog, "forestZone", forest);
-            Set(catalog, "expansionZone", expansion);
             AddToList(catalog, "playableCharacters", hero, secondHero);
             AddToList(catalog, "items", wood, cap, trainingSword);
             AddToList(catalog, "enemies", mushroom, slime);
             AddToList(catalog, "quests", firstQuest, learnToChopQuest);
             AddToList(catalog, "skills", chopping);
-            AddToList(catalog, "zones", village, forest, expansion);
+            AddToList(catalog, "zones", village, forest);
             AddToList(catalog, "recipes", swordRecipe);
 
             CreateScene("Boot", "Boot Scene", new Color(0.12f, 0.13f, 0.16f));
             CreateScene("CharacterSelect", "Character Select", new Color(0.10f, 0.12f, 0.18f));
             CreateScene("Village", "Village", new Color(0.25f, 0.43f, 0.33f));
             CreateScene("Forest", "Forest", new Color(0.10f, 0.28f, 0.18f));
-            CreateScene("ExpansionPreview", "Expansion Preview", new Color(0.25f, 0.20f, 0.35f));
-
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log("IdleOn-like demo scaffold generated. Replace placeholder art by assigning assets in the generated ScriptableObjects and Prefabs.");

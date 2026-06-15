@@ -13,13 +13,22 @@ MonoBehaviour:
   m_Name: Character_SecondSlot
   m_EditorClassIdentifier: 
   id: second_slot
-  displayName: Second Character Slot
+  displayName: Apprentice
   role: 0
-  description: Reserved for a second playable character.
-  portrait: {fileID: 21300000, guid: 73f5fa400ad1a884b8a9f64f83f8ae81, type: 3}
+  description: A secondary character unlocked through account progression.
+  portrait: {fileID: 1960669742, guid: c2d99797164a00d4ea4f54dad06b3577, type: 3}
   idleSprite: {fileID: 21300000, guid: 73f5fa400ad1a884b8a9f64f83f8ae81, type: 3}
-  animatorController: {fileID: 0}
+  animationClips:
+    idle: {fileID: 7400000, guid: 774ccbac29daeb44581b2cc8a4e09f21, type: 2}
+    walk: {fileID: 7400000, guid: aa187f665fe2fea4d81d5618952cf433, type: 2}
+    attack: {fileID: 7400000, guid: 9eaa376cafb021645b9a56288f2d0204, type: 2}
+    gather: {fileID: 7400000, guid: 9eaa376cafb021645b9a56288f2d0204, type: 2}
+    jump: {fileID: 7400000, guid: aa187f665fe2fea4d81d5618952cf433, type: 2}
+    hit: {fileID: 7400000, guid: 229dcb3ff9adfec44b3eb242c417aef5, type: 2}
+    death: {fileID: 7400000, guid: 6d2f8c71b69bd6d4d9d2626642fda18d, type: 2}
   characterPrefab: {fileID: 0}
+  visualScale: 2
+  attackSfx: {fileID: 8300000, guid: c91a3997be85c9a468d9d6da71ef9ccd, type: 3}
   baseStats:
     maxHp: 45
     attack: 4

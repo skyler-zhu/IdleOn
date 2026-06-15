@@ -17,8 +17,9 @@ MonoBehaviour:
   description: A two-floor cave for the mining loop.
   sceneName: MineCave
   mapIcon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
-  backgroundSprite: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
+  visualDefinition: {fileID: 11400000, guid: c414bb58fed2458db58afba74f7bb119, type: 2}
   zonePrefab: {fileID: 0}
+  bgmClip: {fileID: 8300000, guid: e9a03e365ed71e64580fe39f69872605, type: 3}
   requiredQuest: {fileID: 11400000, guid: 1503b84ff22243d1b2c82b0468f2298a, type: 2}
   requiredCharacterLevel: 0
   enemies: []
@@ -35,4 +36,3 @@ MonoBehaviour:
       maxQuantity: 1
     gatherSeconds: 2
     skillExperience: 5
-  nextZonePreview: {fileID: 0}

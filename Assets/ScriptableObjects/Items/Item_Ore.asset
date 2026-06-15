@@ -15,7 +15,7 @@ MonoBehaviour:
   id: ore
   displayName: Ore
   description: A basic mining material gathered from rocks.
-  icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
+  icon: {fileID: 21300000, guid: f59b7fc1c931f214299f363cb0d1633f, type: 3}
   worldSprite: {fileID: 0}
   worldDropPrefab: {fileID: 0}
   itemType: 0

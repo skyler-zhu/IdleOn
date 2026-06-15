@@ -16,8 +16,11 @@ namespace IdleOnLike.Data
         [SerializeField] private Sprite idleSprite;
         [SerializeField] private Sprite hitSprite;
         [SerializeField] private Sprite deathSprite;
-        [SerializeField] private RuntimeAnimatorController animatorController;
+        [SerializeField] private VisualAnimationClips animationClips = new VisualAnimationClips();
         [SerializeField] private GameObject enemyPrefab;
+        [SerializeField] private float visualYOffset;
+        [Min(0.1f)]
+        [SerializeField] private float visualScale = 1f;
 
         [Header("Combat")]
         [Min(1)]
@@ -42,8 +45,10 @@ namespace IdleOnLike.Data
         public Sprite IdleSprite => idleSprite;
         public Sprite HitSprite => hitSprite;
         public Sprite DeathSprite => deathSprite;
-        public RuntimeAnimatorController AnimatorController => animatorController;
+        public VisualAnimationClips AnimationClips => animationClips;
         public GameObject EnemyPrefab => enemyPrefab;
+        public float VisualYOffset => visualYOffset;
+        public float VisualScale => visualScale;
         public int MaxHp => maxHp;
         public int AttackDamage => attackDamage;
         public float AttackInterval => attackInterval;

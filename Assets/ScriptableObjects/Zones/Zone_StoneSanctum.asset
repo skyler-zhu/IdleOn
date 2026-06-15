@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82043af5dafbf1942b192333d483ba66, type: 3}
+  m_Name: Zone_StoneSanctum
+  m_EditorClassIdentifier: 
+  id: stone_sanctum
+  displayName: Stone Sanctum
+  description: A hidden forest side area guarded by a single hourly Stone Idol.
+  sceneName: StoneSanctum
+  mapIcon: {fileID: 21300000, guid: 4e84521007afe274b9a1616f18c38cb4, type: 3}
+  visualDefinition: {fileID: 11400000, guid: 2b3c4d5e6f708192837465564738291a, type: 2}
+  zonePrefab: {fileID: 0}
+  bgmClip: {fileID: 8300000, guid: e84d458d501044842af07cdd0227f534, type: 3}
+  requiredQuest: {fileID: 11400000, guid: 7d70febb424649f2a33394bd005ff8f7, type: 2}
+  requiredCharacterLevel: 0
+  enemies:
+  - enemy: {fileID: 11400000, guid: 0f1e2d3c4b5a69788796a5b4c3d2e1f0, type: 2}
+    weight: 1
+  resourceNodes: []

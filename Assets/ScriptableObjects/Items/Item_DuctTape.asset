@@ -15,7 +15,7 @@ MonoBehaviour:
   id: duct_tape
   displayName: Duct Tape
   description: Shop material for suspiciously sturdy beginner gear.
-  icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
+  icon: {fileID: 21300000, guid: 78124b654cfee144c828c24a72abeb48, type: 3}
   worldSprite: {fileID: 0}
   worldDropPrefab: {fileID: 0}
   itemType: 0

@@ -9,10 +9,9 @@ namespace IdleOnLike.Data
     {
         [Header("Demo Flow")]
         [SerializeField] private CharacterDefinition defaultCharacter;
+        [SerializeField] private AudioClip characterSelectBgmClip;
         [SerializeField] private ZoneDefinition villageZone;
         [SerializeField] private ZoneDefinition forestZone;
-        [Tooltip("Optional third area slot for a later demo expansion.")]
-        [SerializeField] private ZoneDefinition expansionZone;
 
         [Header("Expandable Rosters")]
         [Tooltip("Keep at least two entries available in UI so a second character can be added without changing code.")]
@@ -27,9 +26,9 @@ namespace IdleOnLike.Data
         [SerializeField] private List<RecipeDefinition> recipes = new List<RecipeDefinition>();
 
         public CharacterDefinition DefaultCharacter => defaultCharacter;
+        public AudioClip CharacterSelectBgmClip => characterSelectBgmClip;
         public ZoneDefinition VillageZone => villageZone;
         public ZoneDefinition ForestZone => forestZone;
-        public ZoneDefinition ExpansionZone => expansionZone;
         public IReadOnlyList<CharacterDefinition> PlayableCharacters => playableCharacters;
         public IReadOnlyList<ItemDefinition> Items => items;
         public IReadOnlyList<EnemyDefinition> Enemies => enemies;

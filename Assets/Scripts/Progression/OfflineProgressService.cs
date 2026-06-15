@@ -14,6 +14,7 @@ namespace IdleOnLike.Progression
         private const int FightingKillsPerMinute = 4;
         private const int ChoppingWoodPerMinute = 8;
         private const int MiningOrePerMinute = 8;
+        private const int StoneRespawnMinutes = 60;
         private readonly System.Random random = new System.Random();
 
         private readonly PlayerSaveData saveData;
@@ -64,6 +65,12 @@ namespace IdleOnLike.Progression
         private void ApplyFighting(int minutes, OfflineGainsResult result)
         {
             var zone = catalog.FindZone(saveData.currentZoneId) ?? catalog.ForestZone;
+            if (zone != null && zone.Id == "stone_sanctum")
+            {
+                ApplyStoneSanctumFighting(minutes, result, zone);
+                return;
+            }
+
             var kills = minutes * FightingKillsPerMinute;
             for (var i = 0; i < kills; i++)
             {
@@ -83,6 +90,80 @@ namespace IdleOnLike.Progression
             }
 
             result.levelsGained = ProgressionService.AddExperience(saveData, result.experience);
+        }
+
+        private void ApplyStoneSanctumFighting(int minutes, OfflineGainsResult result, ZoneDefinition zone)
+        {
+            var enemy = PickEnemy(zone);
+            if (enemy == null)
+            {
+                return;
+            }
+
+            var kills = GetStoneOfflineKills(minutes);
+            for (var i = 0; i < kills; i++)
+            {
+                var coins = random.Next(enemy.MinCoins, enemy.MaxCoins + 1);
+                accountData.coins += coins;
+                result.coins += coins;
+                result.experience += enemy.ExperienceReward;
+                questService.AddProgress(QuestObjectiveType.KillEnemy, enemy.Id, 1);
+                AddQuestSummary(result, $"Kill {enemy.DisplayName}");
+                ApplyLoot(enemy, result);
+            }
+
+            if (kills > 0)
+            {
+                MarkStoneOfflineDefeated();
+            }
+
+            result.levelsGained = ProgressionService.AddExperience(saveData, result.experience);
+        }
+
+        private int GetStoneOfflineKills(int minutes)
+        {
+            var endUtc = DateTime.UtcNow;
+            var startUtc = endUtc - TimeSpan.FromMinutes(minutes);
+            var cooldown = GetWorldCooldown("stone_sanctum_stone");
+            var nextReadyUtc = startUtc;
+            if (cooldown != null && DateTime.TryParse(cooldown.lastCompletedUtc, out var defeatedUtc))
+            {
+                nextReadyUtc = defeatedUtc.ToUniversalTime() + TimeSpan.FromMinutes(StoneRespawnMinutes);
+            }
+
+            var kills = 0;
+            while (nextReadyUtc <= endUtc)
+            {
+                kills++;
+                nextReadyUtc += TimeSpan.FromMinutes(StoneRespawnMinutes);
+            }
+
+            return Mathf.Max(0, kills);
+        }
+
+        private void MarkStoneOfflineDefeated()
+        {
+            var cooldown = GetOrCreateWorldCooldown("stone_sanctum_stone");
+            cooldown.lastCompletedUtc = DateTime.UtcNow.ToString("O");
+        }
+
+        private SaveWorldCooldown GetWorldCooldown(string id)
+        {
+            saveData.EnsureCollections();
+            return saveData.worldCooldowns.Find(entry => entry != null && entry.id == id);
+        }
+
+        private SaveWorldCooldown GetOrCreateWorldCooldown(string id)
+        {
+            var cooldown = GetWorldCooldown(id);
+            if (cooldown != null)
+            {
+                return cooldown;
+            }
+
+            cooldown = new SaveWorldCooldown { id = id };
+            saveData.worldCooldowns.Add(cooldown);
+            return cooldown;
         }
 
         private void ApplyChopping(int minutes, OfflineGainsResult result)

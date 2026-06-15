@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using IdleOnLike.Core;
+using IdleOnLike.Data;
 using UnityEngine;
 
 namespace IdleOnLike.Combat
@@ -12,11 +13,11 @@ namespace IdleOnLike.Combat
         private GameRuntime runtime;
         private CombatService combatService;
         private Transform playerTransform;
-        private SpriteRenderer playerRenderer;
-        private Animator playerAnimator;
+        private VisualAnimatorDriver playerVisual;
         private GameObject attackFlash;
         private GameObject treeObject;
         private GameObject villagePortalObject;
+        private GameObject stonePortalObject;
         private bool wasJumping;
 
         public bool IsPlayerNearTree(Vector3 playerPosition)
@@ -27,6 +28,11 @@ namespace IdleOnLike.Combat
         public bool IsPlayerNearVillagePortal(Vector3 playerPosition)
         {
             return villagePortalObject != null && Vector3.Distance(playerPosition, villagePortalObject.transform.position) <= 1.25f;
+        }
+
+        public bool IsPlayerNearStonePortal(Vector3 playerPosition)
+        {
+            return stonePortalObject != null && Vector3.Distance(playerPosition, stonePortalObject.transform.position) <= 1.25f;
         }
 
         public static CombatView Create(GameRuntime runtime, CombatService combatService)
@@ -45,6 +51,7 @@ namespace IdleOnLike.Combat
             ConfigureCamera();
             BuildGround();
             BuildVillagePortal();
+            BuildStonePortal();
             BuildPlayer();
             BuildTree();
 
@@ -59,14 +66,28 @@ namespace IdleOnLike.Combat
 
         private void BuildTree()
         {
+            if (IsStoneZone())
+            {
+                return;
+            }
+
             treeObject = new GameObject("Tree Resource Node");
             treeObject.transform.SetParent(transform, false);
-            treeObject.transform.position = new Vector3(-5.65f, 1.25f, 0f);
+            var visual = GetZoneVisual();
+            var visualSlot = ZoneVisualSlotType.TreeResource;
+            var visualScale = GetVisualScale(visual, visualSlot);
+            var sizeScale = GetVisualSizeScale(visual, visualSlot);
+            treeObject.transform.position = new Vector3(-5.65f, 1.25f + GetVisualYOffset(visual, visualSlot), 0f);
 
-            var nodeSprite = GetResourceNodeSprite("tree");
+            var nodeSprite = GetVisualSprite(visual, visualSlot);
+            if (nodeSprite == null)
+            {
+                nodeSprite = GetResourceNodeSprite("tree");
+            }
+
             if (nodeSprite != null)
             {
-                treeObject.transform.localScale = new Vector3(0.95f, 0.95f, 1f);
+                treeObject.transform.localScale = Vector3.Scale(new Vector3(0.95f, 0.95f, 1f) * visualScale, new Vector3(sizeScale.x, sizeScale.y, 1f));
                 var renderer = treeObject.AddComponent<SpriteRenderer>();
                 renderer.sprite = nodeSprite;
                 renderer.sortingOrder = 1;
@@ -118,14 +139,15 @@ namespace IdleOnLike.Combat
                     ? Mathf.Sin(combatService.JumpProgress * Mathf.PI) * 1.12f
                     : 0f;
                 playerTransform.position = combatService.PlayerPosition + Vector3.up * jumpOffset;
-                playerTransform.localScale = new Vector3(combatService.FacingSign, 1f, 1f);
+                playerVisual.SetFacing(combatService.FacingSign);
                 var horizontalSpeed = Mathf.Abs(playerTransform.position.x - previousPosition.x) > 0.001f ? 1f : 0f;
-                AnimatorParameterUtil.SetFloat(playerAnimator, "Speed", horizontalSpeed);
+                playerVisual.SetMoveAmount(horizontalSpeed);
                 if (combatService.IsJumping && !wasJumping)
                 {
-                    AnimatorParameterUtil.SetTrigger(playerAnimator, "Jump");
+                    playerVisual.PlayJump();
                 }
 
+                playerVisual.Tick(Time.deltaTime);
                 wasJumping = combatService.IsJumping;
             }
 
@@ -133,60 +155,107 @@ namespace IdleOnLike.Combat
             {
                 if (pair.Value.Root != null)
                 {
-                    pair.Value.Root.transform.position = pair.Key.currentPosition;
+                    var deltaX = pair.Key.currentPosition.x - pair.Value.PreviousDataX;
+                    if (Mathf.Abs(deltaX) > 0.001f)
+                    {
+                        pair.Value.Visual?.SetFacing(deltaX < 0f ? -1f : 1f);
+                    }
+
+                    pair.Value.PreviousDataX = pair.Key.currentPosition.x;
+                    pair.Value.Root.transform.position = GetEnemyVisualPosition(pair.Key);
+                    pair.Value.Visual?.Tick(Time.deltaTime);
                 }
             }
         }
 
         private void BuildGround()
         {
-            var ground = new GameObject("Combat Ground");
-            ground.transform.SetParent(transform, false);
-            ground.transform.position = new Vector3(0f, -1.95f, 0.1f);
-            ground.transform.localScale = new Vector3(14f, 0.20f, 1f);
-            var renderer = ground.AddComponent<SpriteRenderer>();
-            renderer.sprite = CreateSolidSprite(new Color32(54, 86, 65, 255));
-            renderer.sortingOrder = -10;
+            var visual = GetZoneVisual();
+            var stoneZone = IsStoneZone();
+            CreateTilemapOrSprite(visual, stoneZone ? "Stone Sanctum Backdrop" : "Forest Backdrop", ZoneVisualSlotType.Background, new Vector3(0f, 0f, 0.5f), new Vector2(16f, 6.6f), stoneZone ? new Color32(59, 58, 67, 255) : new Color32(66, 116, 85, 255), -20);
+            CreateTilemapOrSprite(visual, stoneZone ? "Stone Sanctum Ground" : "Combat Ground", ZoneVisualSlotType.LowerGround, new Vector3(0f, -1.95f, 0.1f), new Vector2(14f, 0.20f), stoneZone ? new Color32(88, 82, 83, 255) : new Color32(54, 86, 65, 255), -10);
+            if (stoneZone)
+            {
+                return;
+            }
 
-            var upper = new GameObject("Upper Forest Platform");
-            upper.transform.SetParent(transform, false);
-            upper.transform.position = new Vector3(0.8f, 0.62f, 0.1f);
-            upper.transform.localScale = new Vector3(12.4f, 0.18f, 1f);
-            var upperRenderer = upper.AddComponent<SpriteRenderer>();
-            upperRenderer.sprite = CreateSolidSprite(new Color32(64, 104, 73, 255));
-            upperRenderer.sortingOrder = -9;
+            CreateTilemapOrSprite(visual, "Upper Forest Platform", ZoneVisualSlotType.UpperPlatform, new Vector3(0f, 0.62f, 0.1f), new Vector2(15.2f, 0.18f), new Color32(64, 104, 73, 255), -9);
 
             var rope = new GameObject("Forest Rope");
             rope.transform.SetParent(transform, false);
             rope.transform.position = new Vector3(0.15f, -0.1f, 0f);
             rope.transform.localScale = new Vector3(0.12f, 2.65f, 1f);
             var ropeRenderer = rope.AddComponent<SpriteRenderer>();
-            ropeRenderer.sprite = CreateSolidSprite(new Color32(176, 139, 82, 255));
+            var ropeSprite = GetVisualSprite(visual, ZoneVisualSlotType.Rope);
+            ropeRenderer.sprite = ropeSprite != null
+                ? ropeSprite
+                : CreateSolidSprite(new Color32(176, 139, 82, 255));
             ropeRenderer.sortingOrder = 1;
             CreateWorldLabel("Forest Rope Label", "Rope\nPress F", rope.transform.position + new Vector3(0f, 1.46f, 0f), 26, Color.white);
         }
 
         private void BuildVillagePortal()
         {
-            villagePortalObject = new GameObject("Village Portal");
+            var visual = GetZoneVisual();
+            var portalSprite = GetVisualSprite(visual, ZoneVisualSlotType.Portal);
+            var stoneZone = IsStoneZone();
+            villagePortalObject = new GameObject(stoneZone ? "Forest Portal" : "Village Portal");
             villagePortalObject.transform.SetParent(transform, false);
             villagePortalObject.transform.position = new Vector3(6.05f, -1.22f, 0f);
 
-            var ring = new GameObject("Village Portal Ring");
+            var ring = new GameObject(stoneZone ? "Forest Portal Ring" : "Village Portal Ring");
             ring.transform.SetParent(villagePortalObject.transform, false);
             ring.transform.localScale = new Vector3(0.72f, 1.15f, 1f);
             var ringRenderer = ring.AddComponent<SpriteRenderer>();
-            ringRenderer.sprite = CreateSolidSprite(new Color32(86, 139, 212, 255));
+            ringRenderer.sprite = portalSprite != null ? portalSprite : CreateSolidSprite(stoneZone ? new Color32(67, 169, 84, 255) : new Color32(86, 139, 212, 255));
             ringRenderer.sortingOrder = 3;
 
-            var core = new GameObject("Village Portal Core");
-            core.transform.SetParent(villagePortalObject.transform, false);
-            core.transform.localScale = new Vector3(0.46f, 0.88f, 1f);
-            var coreRenderer = core.AddComponent<SpriteRenderer>();
-            coreRenderer.sprite = CreateSolidSprite(new Color32(45, 54, 78, 255));
-            coreRenderer.sortingOrder = 4;
+            if (portalSprite == null)
+            {
+                var core = new GameObject(stoneZone ? "Forest Portal Core" : "Village Portal Core");
+                core.transform.SetParent(villagePortalObject.transform, false);
+                core.transform.localScale = new Vector3(0.46f, 0.88f, 1f);
+                var coreRenderer = core.AddComponent<SpriteRenderer>();
+                coreRenderer.sprite = CreateSolidSprite(new Color32(45, 54, 78, 255));
+                coreRenderer.sortingOrder = 4;
+            }
 
-            CreateWorldLabel("Village Portal Label", "Village\nPress F", villagePortalObject.transform.position + new Vector3(0f, 0.98f, 0f), 30, Color.white);
+            CreateWorldLabel(stoneZone ? "Forest Portal Label" : "Village Portal Label", stoneZone ? "Forest\nPress F" : "Village\nPress F", villagePortalObject.transform.position + new Vector3(0f, 0.98f, 0f), 30, Color.white);
+        }
+
+        private void BuildStonePortal()
+        {
+            if (IsStoneZone())
+            {
+                return;
+            }
+
+            var visual = GetZoneVisual();
+            var portalSprite = GetVisualSprite(visual, ZoneVisualSlotType.Portal);
+            stonePortalObject = new GameObject("Stone Sanctum Portal");
+            stonePortalObject.transform.SetParent(transform, false);
+            stonePortalObject.transform.position = new Vector3(-6.05f, -1.22f, 0f);
+
+            var ring = new GameObject("Stone Sanctum Portal Ring");
+            ring.transform.SetParent(stonePortalObject.transform, false);
+            ring.transform.localScale = new Vector3(0.72f, 1.15f, 1f);
+            var ringRenderer = ring.AddComponent<SpriteRenderer>();
+            ringRenderer.sprite = portalSprite != null ? portalSprite : CreateSolidSprite(new Color32(130, 116, 148, 255));
+            ringRenderer.sortingOrder = 3;
+
+            if (portalSprite == null)
+            {
+                var core = new GameObject("Stone Sanctum Portal Core");
+                core.transform.SetParent(stonePortalObject.transform, false);
+                core.transform.localScale = new Vector3(0.46f, 0.88f, 1f);
+                var coreRenderer = core.AddComponent<SpriteRenderer>();
+                coreRenderer.sprite = CreateSolidSprite(new Color32(42, 39, 51, 255));
+                coreRenderer.sortingOrder = 4;
+            }
+
+            var stoneZone = runtime.Catalog.FindZone("stone_sanctum");
+            var label = runtime.IsZoneUnlocked(stoneZone) ? "Stone Sanctum\nPress F" : "Stone Sanctum\nLocked";
+            CreateWorldLabel("Stone Sanctum Portal Label", label, stonePortalObject.transform.position + new Vector3(0f, 0.98f, 0f), 26, Color.white);
         }
 
         private void BuildPlayer()
@@ -195,21 +264,15 @@ namespace IdleOnLike.Combat
             playerObject.transform.SetParent(transform, false);
             playerObject.transform.position = combatService.PlayerPosition;
             playerTransform = playerObject.transform;
-
-            playerRenderer = playerObject.AddComponent<SpriteRenderer>();
-            playerRenderer.sprite = runtime.State.Character != null ? runtime.State.Character.IdleSprite : null;
-            if (playerRenderer.sprite == null)
-            {
-                playerRenderer.sprite = CreateSolidSprite(new Color32(82, 168, 255, 255));
-            }
-
-            playerRenderer.sortingOrder = 5;
-
-            if (runtime.State.Character != null && runtime.State.Character.AnimatorController != null)
-            {
-                playerAnimator = playerObject.AddComponent<Animator>();
-                playerAnimator.runtimeAnimatorController = runtime.State.Character.AnimatorController;
-            }
+            var character = runtime.State.Character;
+            playerVisual = new VisualAnimatorDriver(
+                playerObject,
+                character != null ? character.IdleSprite : null,
+                character != null ? character.AnimationClips : null,
+                character != null ? character.VisualScale : 1f,
+                5,
+                new Color32(82, 168, 255, 255));
+            playerVisual.SetFacing(1f);
 
             attackFlash = new GameObject("Attack Flash");
             attackFlash.transform.SetParent(playerObject.transform, false);
@@ -227,41 +290,40 @@ namespace IdleOnLike.Combat
             {
                 var root = new GameObject($"Enemy Visual - {enemy.enemyDefinition.DisplayName}");
                 root.transform.SetParent(transform, false);
-                var renderer = root.AddComponent<SpriteRenderer>();
-                renderer.sortingOrder = 4;
-                enemyView = new EnemyView { Root = root, Renderer = renderer };
+                enemyView = new EnemyView { Root = root };
                 enemyViews.Add(enemy, enemyView);
                 enemy.viewReference = enemyView;
             }
 
             enemyView.Root.name = $"Enemy Visual - {enemy.enemyDefinition.DisplayName}";
-            enemyView.Root.transform.position = enemy.currentPosition;
+            enemyView.Root.transform.position = GetEnemyVisualPosition(enemy);
             enemyView.Root.SetActive(true);
-            enemyView.Renderer.sprite = enemy.enemyDefinition.IdleSprite != null
-                ? enemy.enemyDefinition.IdleSprite
-                : CreateSolidSprite(new Color32(123, 212, 97, 255));
-            enemyView.Renderer.color = Color.white;
-            if (enemy.enemyDefinition.AnimatorController != null)
-            {
-                if (enemyView.Animator == null)
-                {
-                    enemyView.Animator = enemyView.Root.AddComponent<Animator>();
-                }
+            enemyView.PreviousDataX = enemy.currentPosition.x;
+            enemyView.Visual?.Dispose();
+            enemyView.Visual = new VisualAnimatorDriver(
+                enemyView.Root,
+                enemy.enemyDefinition.IdleSprite,
+                enemy.enemyDefinition.AnimationClips,
+                enemy.enemyDefinition.VisualScale,
+                4,
+                new Color32(123, 212, 97, 255));
+        }
 
-                enemyView.Animator.runtimeAnimatorController = enemy.enemyDefinition.AnimatorController;
-            }
-            else if (enemyView.Animator != null)
+        private static Vector3 GetEnemyVisualPosition(CombatEnemyInstance enemy)
+        {
+            if (enemy == null || enemy.enemyDefinition == null)
             {
-                Destroy(enemyView.Animator);
-                enemyView.Animator = null;
+                return Vector3.zero;
             }
+
+            return enemy.currentPosition + Vector3.up * enemy.enemyDefinition.VisualYOffset;
         }
 
         private void OnEnemyDamaged(CombatEnemyInstance enemy)
         {
             if (enemyViews.TryGetValue(enemy, out var enemyView))
             {
-                AnimatorParameterUtil.SetTrigger(enemyView.Animator, "Hit");
+                enemyView.Visual.PlayHit();
                 StopCoroutineSafe(enemyView.HitRoutine);
                 enemyView.HitRoutine = StartCoroutine(PlayEnemyHit(enemy, enemyView));
             }
@@ -271,7 +333,7 @@ namespace IdleOnLike.Combat
         {
             if (enemyViews.TryGetValue(enemy, out var enemyView))
             {
-                AnimatorParameterUtil.SetTrigger(enemyView.Animator, "Death");
+                enemyView.Visual.PlayDeath();
                 StopCoroutineSafe(enemyView.DeathRoutine);
                 enemyView.DeathRoutine = StartCoroutine(PlayEnemyDeath(enemyView));
             }
@@ -279,13 +341,24 @@ namespace IdleOnLike.Combat
 
         private void OnPlayerAttacked()
         {
-            if (AnimatorParameterUtil.HasController(playerAnimator))
+            runtime.PlayAttackSfx();
+            playerVisual.PlayAttack();
+            if (playerVisual.HasAttackAnimation)
             {
-                AnimatorParameterUtil.SetTrigger(playerAnimator, "Attack");
                 return;
             }
 
             StartCoroutine(PlayPlayerAttack());
+        }
+
+        public void PlayPlayerGather()
+        {
+            if (playerVisual == null)
+            {
+                return;
+            }
+
+            playerVisual.PlayGather();
         }
 
         private void OnPlayerDamaged()
@@ -295,18 +368,13 @@ namespace IdleOnLike.Combat
 
         private void OnPlayerRestStarted()
         {
-            if (playerRenderer != null)
-            {
-                playerRenderer.color = new Color(0.55f, 0.65f, 0.78f, 1f);
-            }
+            playerVisual.PlayDeath();
+            playerVisual.SetColor(new Color(0.50f, 0.52f, 0.58f, 1f));
         }
 
         private void OnPlayerRestEnded()
         {
-            if (playerRenderer != null)
-            {
-                playerRenderer.color = Color.white;
-            }
+            playerVisual.SetColor(Color.white);
         }
 
         private IEnumerator PlayPlayerAttack()
@@ -321,23 +389,22 @@ namespace IdleOnLike.Combat
 
         private IEnumerator PlayEnemyHit(CombatEnemyInstance enemy, EnemyView enemyView)
         {
-            enemyView.Renderer.color = Color.white * 1.6f;
+            enemyView.Visual.SetColor(Color.white * 1.6f);
             combatService.PushEnemyBack(enemy, 0.42f);
             yield return new WaitForSeconds(0.10f);
-            enemyView.Renderer.color = Color.white;
+            enemyView.Visual.SetColor(Color.white);
         }
 
         private IEnumerator PlayEnemyDeath(EnemyView enemyView)
         {
-            var renderer = enemyView.Renderer;
             for (var t = 0f; t < 1f; t += Time.deltaTime * 4f)
             {
-                if (renderer == null)
+                if (enemyView.Visual == null)
                 {
                     yield break;
                 }
 
-                renderer.color = new Color(1f, 1f, 1f, 1f - t);
+                enemyView.Visual.SetColor(new Color(1f, 1f, 1f, 1f - t));
                 yield return null;
             }
 
@@ -349,15 +416,15 @@ namespace IdleOnLike.Combat
 
         private IEnumerator FlashPlayer(Color color, float seconds)
         {
-            if (playerRenderer == null)
+            if (playerVisual == null)
             {
                 yield break;
             }
 
-            var previous = playerRenderer.color;
-            playerRenderer.color = color;
+            var previous = playerVisual.Renderer.color;
+            playerVisual.SetColor(color);
             yield return new WaitForSeconds(seconds);
-            playerRenderer.color = combatService.IsResting ? new Color(0.55f, 0.65f, 0.78f, 1f) : previous;
+            playerVisual.SetColor(combatService.IsResting ? new Color(0.50f, 0.52f, 0.58f, 1f) : previous);
         }
 
         private void StopCoroutineSafe(Coroutine routine)
@@ -374,6 +441,94 @@ namespace IdleOnLike.Combat
             texture.SetPixel(0, 0, color);
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+        }
+
+        private ZoneVisualDefinition GetZoneVisual()
+        {
+            var zone = runtime != null && runtime.State != null ? runtime.State.CurrentZone : null;
+            return zone != null ? zone.Visual : null;
+        }
+
+        private bool IsStoneZone()
+        {
+            return runtime != null && runtime.State != null && runtime.State.CurrentZone != null && runtime.State.CurrentZone.Id == "stone_sanctum";
+        }
+
+        private static Sprite GetVisualSprite(ZoneVisualDefinition visual, ZoneVisualSlotType slotType)
+        {
+            return visual != null ? visual.GetSprite(slotType) : null;
+        }
+
+        private static float GetVisualScale(ZoneVisualDefinition visual, ZoneVisualSlotType slotType)
+        {
+            return visual != null ? visual.GetScale(slotType) : 1f;
+        }
+
+        private static Vector2 GetVisualSizeScale(ZoneVisualDefinition visual, ZoneVisualSlotType slotType)
+        {
+            return visual != null ? visual.GetSizeScale(slotType) : Vector2.one;
+        }
+
+        private static float GetVisualYOffset(ZoneVisualDefinition visual, ZoneVisualSlotType slotType)
+        {
+            return visual != null ? visual.GetYOffset(slotType) : 0f;
+        }
+
+        private void CreateTilemapOrSprite(ZoneVisualDefinition visual, string name, ZoneVisualSlotType slotType, Vector3 position, Vector2 size, Color32 fallbackColor, int sortingOrder)
+        {
+            var tilemap = visual != null ? visual.TilemapDefinition : null;
+            var visualScale = GetVisualScale(visual, slotType);
+            var sizeScale = GetVisualSizeScale(visual, slotType);
+            var visualPosition = position + Vector3.up * GetVisualYOffset(visual, slotType);
+            var scaledSize = Vector2.Scale(size * visualScale, sizeScale);
+            var tilemapPosition = slotType == ZoneVisualSlotType.Background
+                ? visualPosition
+                : visualPosition + Vector3.up * GetGroundYOffset(visual);
+            if (tilemap != null && RuntimeTilemapBuilder.TryCreateFilledTilemap(transform, $"{name} Tilemap", GetTile(tilemap, slotType), tilemapPosition, scaledSize, sortingOrder, tilemap.TileSize, slotType != ZoneVisualSlotType.Background))
+            {
+                return;
+            }
+
+            var instance = new GameObject(name);
+            instance.transform.SetParent(transform, false);
+            instance.transform.position = visualPosition;
+            var renderer = instance.AddComponent<SpriteRenderer>();
+            var sprite = GetVisualSprite(visual, slotType);
+            renderer.sprite = sprite != null ? sprite : CreateSolidSprite(fallbackColor);
+            renderer.sortingOrder = sortingOrder;
+            instance.transform.localScale = GetSpriteScale(slotType, sprite, scaledSize);
+        }
+
+        private static Vector3 GetSpriteScale(ZoneVisualSlotType slotType, Sprite sprite, Vector2 targetSize)
+        {
+            if (slotType != ZoneVisualSlotType.Background || sprite == null)
+            {
+                return new Vector3(targetSize.x, targetSize.y, 1f);
+            }
+
+            var spriteSize = sprite.bounds.size;
+            if (spriteSize.x <= 0f || spriteSize.y <= 0f)
+            {
+                return new Vector3(targetSize.x, targetSize.y, 1f);
+            }
+
+            var uniformScale = Mathf.Max(targetSize.x / spriteSize.x, targetSize.y / spriteSize.y);
+            return new Vector3(uniformScale, uniformScale, 1f);
+        }
+
+        private static float GetGroundYOffset(ZoneVisualDefinition visual)
+        {
+            return visual != null ? visual.GroundYOffset : 0f;
+        }
+
+        private static UnityEngine.Tilemaps.TileBase GetTile(ZoneTilemapDefinition tilemap, ZoneVisualSlotType slotType)
+        {
+            if (slotType == ZoneVisualSlotType.Background)
+            {
+                return tilemap.BackgroundTile;
+            }
+
+            return slotType == ZoneVisualSlotType.UpperPlatform ? tilemap.UpperPlatformTile : tilemap.LowerGroundTile;
         }
 
         private static void ConfigureCamera()
@@ -406,6 +561,12 @@ namespace IdleOnLike.Combat
 
         private void OnDestroy()
         {
+            playerVisual?.Dispose();
+            foreach (var enemyView in enemyViews.Values)
+            {
+                enemyView.Visual?.Dispose();
+            }
+
             if (combatService == null)
             {
                 return;
@@ -423,10 +584,10 @@ namespace IdleOnLike.Combat
         private sealed class EnemyView
         {
             public GameObject Root;
-            public SpriteRenderer Renderer;
-            public Animator Animator;
+            public VisualAnimatorDriver Visual;
             public Coroutine HitRoutine;
             public Coroutine DeathRoutine;
+            public float PreviousDataX;
         }
     }
 }

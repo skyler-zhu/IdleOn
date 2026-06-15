@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Quest_GearUpGamer
   m_EditorClassIdentifier: 
   id: gear_up_gamer
-  title: Gear Up, Gamer!
-  description: Buy Duct Tape from the merchant, craft a Taped Helmet at the anvil, then equip it.
+  title: Equipment Certification
+  description: Purchase Duct Tape from the merchant, craft a Taped Helmet at the anvil, then equip it.
   icon: {fileID: 21300000, guid: fe5fb0802733b684285f847f4427e3a1, type: 3}
   giverName: Scripticus
   giverPortrait: {fileID: 0}
@@ -37,6 +37,6 @@ MonoBehaviour:
     coins: 40
     experience: 55
     items: []
-  nextQuest: {fileID: 11400000, guid: 62f1c4f0b9e947318f58b5e4ed6f6081, type: 2}
+  nextQuest: {fileID: 11400000, guid: 7d70febb424649f2a33394bd005ff8f7, type: 2}
   unlockedZone: {fileID: 0}
   unlockedSkill: {fileID: 0}

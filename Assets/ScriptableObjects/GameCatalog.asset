@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: GameCatalog
   m_EditorClassIdentifier: 
   defaultCharacter: {fileID: 11400000, guid: 638a0258e8e9c644b83ce13bbacedc3a, type: 2}
+  characterSelectBgmClip: {fileID: 8300000, guid: da8e12290e419f94895a686ec0f34015, type: 3}
   villageZone: {fileID: 11400000, guid: 24ea7f044b07f994f8349afbd4e34a0b, type: 2}
   forestZone: {fileID: 11400000, guid: 6cbaee616eb8fb3449c1c5b8aeedf1ff, type: 2}
-  expansionZone: {fileID: 11400000, guid: 6187aef2577925d4c81b2a36d1fa932a, type: 2}
   playableCharacters:
   - {fileID: 11400000, guid: 638a0258e8e9c644b83ce13bbacedc3a, type: 2}
   - {fileID: 11400000, guid: 6dc238d5c3858174e83398b92feaaa36, type: 2}
@@ -26,14 +26,21 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c7424c49694a4908867066c66de68f88, type: 2}
   - {fileID: 11400000, guid: dfd5f7a487e3459f81025af988861730, type: 2}
   - {fileID: 11400000, guid: ea915c80f3504ebbb595d2ce0a8f31bc, type: 2}
+  - {fileID: 11400000, guid: ae6393f3fb864e74b5cd65217d9edc8d, type: 2}
+  - {fileID: 11400000, guid: 5b0a66c629ae45c7a28fceae09620e74, type: 2}
+  - {fileID: 11400000, guid: acefd6e44db741ce8ff1ff0a13cfaf69, type: 2}
+  - {fileID: 11400000, guid: e5a21455fbed46528a7402f0287bef5c, type: 2}
   enemies:
   - {fileID: 11400000, guid: d3919784e54e237479418816c448d1fc, type: 2}
   - {fileID: 11400000, guid: 9b7b0c0f3ad64f3ea979b3e90db6a4b6, type: 2}
+  - {fileID: 11400000, guid: 0f1e2d3c4b5a69788796a5b4c3d2e1f0, type: 2}
   quests:
   - {fileID: 11400000, guid: 4d7c7a654156f5747b96aedb6c10e13c, type: 2}
   - {fileID: 11400000, guid: 1503b84ff22243d1b2c82b0468f2298a, type: 2}
   - {fileID: 11400000, guid: a4dce914f5d2438887f9e927ec793a37, type: 2}
   - {fileID: 11400000, guid: 62f1c4f0b9e947318f58b5e4ed6f6081, type: 2}
+  - {fileID: 11400000, guid: 7d70febb424649f2a33394bd005ff8f7, type: 2}
+  - {fileID: 11400000, guid: 3c4d5e6f708192837465564738291a2b, type: 2}
   - {fileID: 11400000, guid: 9a17c0b8d9c64e54a9a28f15d56f6c40, type: 2}
   - {fileID: 11400000, guid: 3dca1b2b46be4d97a64a3991324fa0b8, type: 2}
   skills:
@@ -51,8 +58,11 @@ MonoBehaviour:
   zones:
   - {fileID: 11400000, guid: 24ea7f044b07f994f8349afbd4e34a0b, type: 2}
   - {fileID: 11400000, guid: 6cbaee616eb8fb3449c1c5b8aeedf1ff, type: 2}
-  - {fileID: 11400000, guid: 6187aef2577925d4c81b2a36d1fa932a, type: 2}
+  - {fileID: 11400000, guid: 1a2b3c4d5e6f70819283746556473829, type: 2}
   - {fileID: 11400000, guid: b8d05632eb0e49a4b971d04d60898bb8, type: 2}
   recipes:
   - {fileID: 11400000, guid: 4fab2781a3ca6744491ac6af587bf8d6, type: 2}
   - {fileID: 11400000, guid: 18e6ff35c53249e897fc91367afbb6d4, type: 2}
+  - {fileID: 11400000, guid: 4d3a5c634c204266a7cda7bf826fc0d2, type: 2}
+  - {fileID: 11400000, guid: b46cabda9d2f41dfab0c4181564f3710, type: 2}
+  - {fileID: 11400000, guid: 04bdd4bf1c07406c9389e86a7182f27d, type: 2}
